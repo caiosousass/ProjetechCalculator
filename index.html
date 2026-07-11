@@ -173,7 +173,7 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 .eq-head .nm{flex:2}.eq-head .pw{flex:1.1}.eq-head .qt{flex:.7}.eq-head .sp{flex:0 0 40px}
 .sector{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--bg2)}
 .sector-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.sector-title{font-weight:700;font-size:15px}
+.sector-title{font-weight:700;font-size:15px;flex:1}
 .sector-sub{margin-left:auto;font-size:12px;color:var(--acc2);font-weight:700}
 .sector-del{width:30px;height:30px;border-radius:8px;background:var(--card);border:1px solid var(--line);color:var(--danger);cursor:pointer;font-size:18px;flex:0 0 auto;line-height:1}
 .add-eq{margin-top:4px}
@@ -1060,7 +1060,7 @@ function eqRow(catK){
 function addSector(cat, dlKey){
   const catK=dlKey||catKey(cat);
   const sec=document.createElement('div'); sec.className='sector'; sec.dataset.cat=cat;
-  sec.innerHTML=`<div class="sector-head"><span class="sector-title">${cat}</span><span class="sector-sub"></span><button class="sector-del" title="Remover setor">×</button></div>
+  sec.innerHTML=`<div class="sector-head"><span class="sector-title">${cat}</span><button class="sector-del" title="Remover setor">×</button></div>
     <div class="eqlist"></div>
     <button class="btn btn-ghost btn-sm add-eq" style="width:100%">+ adicionar equipamento</button>
     <details class="sector-res" open><summary>Resultado do setor</summary><div class="results sector-res-body"></div></details>`;
@@ -1098,7 +1098,6 @@ function calcPower(){
       sub+=p*q;
     });
     totalW+=sub;
-    const s=sec.querySelector('.sector-sub'); if(s) s.textContent=fmt(sub/1000,2)+' kW';
     const body=sec.querySelector('.sector-res-body'); if(body) renderSectorResult(body, sub, pf);
   });
   const kva=totalW/pf/1000;
