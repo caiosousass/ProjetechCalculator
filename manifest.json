@@ -1,6 +1,6 @@
 {
-  "name": "ProjeTech Calc",
-  "short_name": "ProjeTech",
+  "name": "Projetech Calculator",
+  "short_name": "Projetech Calculator",
   "description": "Calculadoras para eventos: Pixel Map de LED, corrente/potência elétrica e projeção.",
   "start_url": "index.html",
   "scope": "./",
