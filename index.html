@@ -158,7 +158,13 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 .stat.danger{border-color:rgba(239,68,68,.4)}.stat.danger .v{color:var(--danger)}
 
 /* equipment list */
-.eq{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.eq{display:flex;gap:8px;align-items:center;margin-bottom:8px;position:relative}
+.eq-suggest{position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--card2);border:1px solid var(--acc);border-radius:12px;max-height:240px;overflow-y:auto;-webkit-overflow-scrolling:touch;box-shadow:0 12px 34px rgba(0,0,0,.55)}
+.eq-suggest-item{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 13px;cursor:pointer;border-bottom:1px solid var(--line);font-size:14px;color:var(--txt)}
+.eq-suggest-item:last-child{border-bottom:0}
+.eq-suggest-item:hover,.eq-suggest-item.active{background:var(--bg2)}
+.eq-suggest-item .w{color:var(--acc2);font-weight:700;white-space:nowrap}
+.eq-suggest-empty{padding:12px 13px;color:var(--mut2);font-size:13px}
 .eq input{padding:11px 12px;font-size:15px}
 .eq .nm{flex:2}.eq .pw{flex:1.1}.eq .qt{flex:.7}
 .eq .del{flex:0 0 auto;width:40px;height:44px;border-radius:11px;background:var(--bg2);border:1px solid var(--line);color:var(--danger);font-size:20px;cursor:pointer;display:grid;place-items:center}
@@ -985,6 +991,7 @@ buildCableRef();
 
 // índice de equipamentos + setores (equipment.js)
 const equipIndex={};
+const equipGroups={};
 let CATS=[];
 const catKey=c=>c.normalize('NFD').replace(/[^\w]/g,'').toLowerCase();
 function buildEquip(){
@@ -992,16 +999,9 @@ function buildEquip(){
   const groups={};
   EQUIP.forEach(e=>{ equipIndex[e.n.trim().toLowerCase()]=e; (groups[e.c]=groups[e.c]||[]).push(e); });
   CATS=Object.keys(groups);
-  // um datalist por categoria
-  CATS.forEach(c=>{
-    const dl=document.createElement('datalist'); dl.id='dl_'+catKey(c);
-    groups[c].forEach(e=>{ const o=document.createElement('option'); o.value=e.n; o.textContent=e.w+' W'; dl.appendChild(o); });
-    document.body.appendChild(dl);
-  });
-  // datalist com todos os equipamentos (para setor personalizado)
-  const dlAll=document.createElement('datalist'); dlAll.id='dl_all';
-  EQUIP.forEach(e=>{ const o=document.createElement('option'); o.value=e.n; o.textContent=e.w+' W · '+e.c; dlAll.appendChild(o); });
-  document.body.appendChild(dlAll);
+  // grupos de equipamentos por categoria (para o dropdown de busca)
+  CATS.forEach(c=>{ equipGroups[catKey(c)]=groups[c]; });
+  equipGroups['all']=EQUIP;   // setor personalizado busca em todos
   // seletor de setores
   const cp=$('catPicker');
   CATS.forEach(c=>{ const b=document.createElement('button'); b.className='chip'; b.textContent=c; b.onclick=()=>{ addSector(c); cp.style.display='none'; }; cp.appendChild(b); });
@@ -1014,13 +1014,38 @@ function equipByName(v){ return equipIndex[(v||'').trim().toLowerCase()]||null; 
 function eqRow(catK){
   const div=document.createElement('div');
   div.className='eq';
-  div.innerHTML=`<input class="nm" list="dl_${catK}" placeholder="Buscar equipamento…" autocomplete="off">
+  div.innerHTML=`<input class="nm" placeholder="Buscar equipamento…" autocomplete="off">
     <input class="pw" type="number" inputmode="decimal" placeholder="W">
     <input class="qt" type="number" inputmode="numeric" value="1">
-    <button class="del" title="Remover">×</button>`;
-  const nmI=div.querySelector('.nm'), pwI=div.querySelector('.pw'), qtI=div.querySelector('.qt');
+    <button class="del" title="Remover">×</button>
+    <div class="eq-suggest" style="display:none"></div>`;
+  const nmI=div.querySelector('.nm'), pwI=div.querySelector('.pw'), qtI=div.querySelector('.qt'), sug=div.querySelector('.eq-suggest');
   div.querySelector('.del').onclick=()=>{div.remove();calcPower();};
-  nmI.addEventListener('input',()=>{ const f=equipByName(nmI.value); if(f) pwI.value=f.w; calcPower(); });
+
+  function hideSug(){ sug.style.display='none'; sug.innerHTML=''; }
+  function renderSug(){
+    const q=nmI.value.trim().toLowerCase();
+    sug.innerHTML='';
+    if(!q){ sug.style.display='none'; return; }
+    const list=(equipGroups[catK]||EQUIP).filter(e=>e.n.toLowerCase().includes(q)).slice(0,60);
+    if(!list.length){
+      const d=document.createElement('div'); d.className='eq-suggest-empty';
+      d.textContent='Nenhum equipamento na lista — informe a potência manualmente.';
+      sug.appendChild(d); sug.style.display='block'; return;
+    }
+    list.forEach(e=>{
+      const it=document.createElement('div'); it.className='eq-suggest-item';
+      const nn=document.createElement('span'); nn.textContent=e.n;
+      const ww=document.createElement('span'); ww.className='w'; ww.textContent=e.w+' W';
+      it.appendChild(nn); it.appendChild(ww);
+      it.addEventListener('mousedown',ev=>{ ev.preventDefault(); nmI.value=e.n; pwI.value=e.w; hideSug(); calcPower(); });
+      sug.appendChild(it);
+    });
+    sug.style.display='block';
+  }
+  nmI.addEventListener('input',()=>{ const f=equipByName(nmI.value); if(f) pwI.value=f.w; renderSug(); calcPower(); });
+  nmI.addEventListener('focus',renderSug);
+  nmI.addEventListener('blur',()=>setTimeout(hideSug,180));
   pwI.addEventListener('input',calcPower);
   qtI.addEventListener('input',calcPower);
   return div;
