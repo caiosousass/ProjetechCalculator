@@ -177,6 +177,12 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 .sector-sub{margin-left:auto;font-size:12px;color:var(--acc2);font-weight:700}
 .sector-del{width:30px;height:30px;border-radius:8px;background:var(--card);border:1px solid var(--line);color:var(--danger);cursor:pointer;font-size:18px;flex:0 0 auto;line-height:1}
 .add-eq{margin-top:4px}
+details.sector-res{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+details.sector-res summary{cursor:pointer;list-style:none;font-size:11px;letter-spacing:.5px;color:var(--mut2);text-transform:uppercase;font-weight:700;display:flex;align-items:center;gap:7px}
+details.sector-res summary::-webkit-details-marker{display:none}
+details.sector-res summary::before{content:'▸';color:var(--acc2);font-size:11px;transition:transform .15s}
+details.sector-res[open] summary{margin-bottom:10px}
+details.sector-res[open] summary::before{transform:rotate(90deg)}
 .cat-picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 
 .hint{font-size:12px;color:var(--mut2);margin-top:8px;line-height:1.5}
@@ -467,14 +473,14 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     </div>
 
     <div class="card">
-      <h3>Resultado</h3>
+      <h3>Resultado · total geral</h3>
       <div class="results" id="powerResults"></div>
       <div class="hint" id="powerHint"></div>
     </div>
 
-    <div class="card">
-      <h3>Queda de tensão</h3>
-      <div class="row">
+    <details class="card ref-card">
+      <summary>Queda de tensão</summary>
+      <div class="row" style="margin-top:2px">
         <div class="field"><label>Comprimento do cabo</label><div class="suffix"><input type="number" id="vdLen" value="" placeholder="0" step="1" inputmode="decimal"><span>m</span></div></div>
         <div class="field"><label>Bitola</label>
           <select id="vdSec">
@@ -508,7 +514,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       </div>
       <div class="results" id="vdResults"></div>
       <div class="hint" id="vdHint"></div>
-    </div>
+    </details>
 
     <details class="card ref-card">
       <summary>Tabela de referência · cabo (mm² × A)</summary>
@@ -1055,7 +1061,8 @@ function addSector(cat, dlKey){
   const sec=document.createElement('div'); sec.className='sector'; sec.dataset.cat=cat;
   sec.innerHTML=`<div class="sector-head"><span class="sector-title">${cat}</span><span class="sector-sub"></span><button class="sector-del" title="Remover setor">×</button></div>
     <div class="eqlist"></div>
-    <button class="btn btn-ghost btn-sm add-eq" style="width:100%">+ adicionar equipamento</button>`;
+    <button class="btn btn-ghost btn-sm add-eq" style="width:100%">+ adicionar equipamento</button>
+    <details class="sector-res" open><summary>Resultado do setor</summary><div class="results sector-res-body"></div></details>`;
   const list=sec.querySelector('.eqlist');
   sec.querySelector('.add-eq').onclick=()=>{ list.appendChild(eqRow(catK)); };
   sec.querySelector('.sector-del').onclick=()=>{ sec.remove(); calcPower(); };
@@ -1066,7 +1073,21 @@ function addSector(cat, dlKey){
 $('addSector').onclick=()=>{ const cp=$('catPicker'); cp.style.display=cp.style.display==='none'?'flex':'none'; };
 buildEquip();
 
+const statBox=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+function renderSectorResult(body, w, pf){
+  const kva=w/pf/1000;
+  const cur = phase===3 ? w/(Math.sqrt(3)*volt*pf) : w/(volt*pf);
+  const brk=breakers.find(b=>b>=cur*1.25);
+  const cab=activeCables().find(c=>c[1]>=cur);
+  body.innerHTML=
+    statBox('Corrente',`${fmt(cur,1)}<small> A</small>`,'hi full')+
+    statBox('Potência ativa',`${fmt(w/1000,2)}<small> kW</small>`)+
+    statBox('Potência aparente',`${fmt(kva,2)}<small> kVA</small>`)+
+    statBox('Disjuntor', brk?`${brk}<small> A</small>`:'>250 A','ok')+
+    statBox('Cabo', cab?`${cab[0]} mm²`:'>150 mm²','ok');
+}
 function calcPower(){
+  const pf=Math.min(1,Math.max(0.1,parseFloat($('pf').value)||1));
   let totalW=0;
   document.querySelectorAll('#sectors .sector').forEach(sec=>{
     let sub=0;
@@ -1077,8 +1098,8 @@ function calcPower(){
     });
     totalW+=sub;
     const s=sec.querySelector('.sector-sub'); if(s) s.textContent=fmt(sub/1000,2)+' kW';
+    const body=sec.querySelector('.sector-res-body'); if(body) renderSectorResult(body, sub, pf);
   });
-  const pf=Math.min(1,Math.max(0.1,parseFloat($('pf').value)||1));
   const kva=totalW/pf/1000;
   let current;
   if(phase===3) current=totalW/(Math.sqrt(3)*volt*pf);
