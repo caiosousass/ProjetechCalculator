@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ProjeTech">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>ProjeTech · Calc</title>
+<style>
+:root{
+  --bg:#0b1020; --bg2:#121a30; --card:#161f38; --card2:#1c2745;
+  --line:#26325a; --txt:#eef2ff; --mut:#93a0c7; --mut2:#6b78a3;
+  --acc:#3d7bff; --acc2:#22d3ee; --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444;
+  --r:16px; --shadow:0 8px 30px rgba(0,0,0,.35);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:radial-gradient(1200px 600px at 50% -10%, #1a2542 0%, var(--bg) 55%) fixed;
+  color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  min-height:100dvh;
+}
+/* ===== Layout: sidebar + content ===== */
+.app{display:flex;min-height:100dvh;width:100%}
+.sidebar{
+  width:214px;flex:0 0 auto;z-index:40;
+  background:linear-gradient(180deg,#0e1730,#0b1020);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;
+  padding:16px 12px calc(var(--safe-bot) + 14px);
+  position:sticky;top:0;height:100dvh;align-self:flex-start;
+  transition:width .2s ease;
+}
+body.collapsed .sidebar{width:70px}
+.side-logo{display:flex;align-items:center;justify-content:flex-start;padding:6px 8px 20px;min-height:50px;overflow:hidden}
+.side-logo .logo-full{height:42px;width:auto;max-width:100%;display:block}
+.side-logo .logo-mark-img{height:40px;width:auto;display:none}
+body.collapsed .side-logo{justify-content:center;padding-left:0;padding-right:0}
+body.collapsed .side-logo .logo-full{display:none}
+body.collapsed .side-logo .logo-mark-img{display:block}
+.side-nav{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.side-nav button{
+  display:flex;align-items:center;gap:12px;border:0;background:transparent;color:var(--mut);
+  padding:11px 12px;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;
+  text-align:left;white-space:nowrap;overflow:hidden;transition:.15s;
+}
+.side-nav button svg{width:22px;height:22px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.side-nav button:hover{background:var(--bg2);color:var(--txt)}
+.side-nav button.on{background:linear-gradient(135deg,rgba(61,123,255,.95),rgba(34,211,238,.7));color:#fff}
+.side-nav button.on svg{stroke:#fff}
+body.collapsed .side-nav button{justify-content:center;padding:11px 0}
+body.collapsed .side-nav button span{display:none}
+.collapse-btn{
+  margin-top:auto;align-self:flex-end;width:38px;height:38px;border-radius:10px;
+  background:var(--bg2);border:1px solid var(--line);color:var(--mut);cursor:pointer;
+  display:grid;place-items:center;transition:.15s;
+}
+.collapse-btn:hover{color:var(--txt);border-color:var(--acc)}
+.collapse-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+body.collapsed .collapse-btn{align-self:center}
+body.collapsed .collapse-btn svg{transform:rotate(180deg)}
+.content{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:none}
+.scrim{display:none}
+.menu-btn{width:40px;height:40px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);color:var(--txt);display:grid;place-items:center;cursor:pointer}
+.menu-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.topbar-logo{height:30px;width:auto}
+
+/* ===== Main / screens ===== */
+main{flex:1;padding:22px 18px 48px;max-width:780px;width:100%;margin:0 auto}
+.screen{display:none;animation:fade .25s ease}
+.screen.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.screen-title{font-size:22px;font-weight:800;margin:4px 0 2px}
+.screen-sub{color:var(--mut);font-size:13px;margin:0 0 16px}
+
+/* ===== Cards ===== */
+.card{
+  background:linear-gradient(180deg,var(--card),var(--card2));
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:16px;margin-bottom:14px;box-shadow:var(--shadow);
+}
+.card h3{margin:0 0 12px;font-size:14px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;font-weight:700}
+
+/* tabela de referência (details) */
+details.ref-card summary{cursor:pointer;list-style:none;font-size:14px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;font-weight:700;display:flex;align-items:center;gap:8px}
+details.ref-card summary::-webkit-details-marker{display:none}
+details.ref-card summary::before{content:'▸';color:var(--acc2);font-size:12px;transition:transform .15s}
+details.ref-card[open] summary{margin-bottom:14px}
+details.ref-card[open] summary::before{transform:rotate(90deg)}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.ref-table{width:100%;border-collapse:collapse;font-size:14px}
+.ref-table th,.ref-table td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.ref-table th:first-child,.ref-table td:first-child{text-align:left}
+.ref-table th{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.ref-table td{color:var(--txt)} .ref-table td:first-child{font-weight:700}
+.ref-table tbody tr:last-child td{border-bottom:0}
+.ref-table tbody tr.hl{background:rgba(61,123,255,.16)}
+.ref-table tbody tr.hl td{color:var(--acc2);font-weight:700}
+.ref-table tbody tr.hl td:first-child::after{content:' ◄ sugerido';font-size:10px;color:var(--acc2);letter-spacing:.5px;font-weight:700}
+
+/* ===== Fields ===== */
+.field{margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+label{display:block;font-size:13px;color:var(--mut);margin-bottom:6px;font-weight:600}
+.row{display:flex;gap:10px}
+.row>.field{flex:1;margin-bottom:0}
+input,select{
+  width:100%;padding:13px 14px;font-size:16px;color:var(--txt);
+  background:var(--bg2);border:1px solid var(--line);border-radius:12px;
+  outline:none;transition:border .15s,box-shadow .15s;
+}
+input:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(61,123,255,.18)}
+input::placeholder{color:var(--mut2)}
+select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2393a0c7' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:38px}
+.suffix{position:relative}
+.suffix span{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--mut2);font-size:13px;pointer-events:none}
+
+/* segmented control */
+.seg{display:flex;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{
+  flex:1;padding:10px 6px;border:0;border-radius:9px;background:transparent;
+  color:var(--mut);font-size:14px;font-weight:600;cursor:pointer;transition:.15s;
+}
+.seg button.on{background:linear-gradient(135deg,var(--acc),#5a8bff);color:#fff;box-shadow:0 3px 10px rgba(61,123,255,.35)}
+
+/* buttons */
+.btn{
+  width:100%;padding:14px;border:0;border-radius:13px;font-size:15px;font-weight:700;
+  cursor:pointer;transition:transform .08s,opacity .15s;
+}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#04122e}
+.btn-ghost{background:var(--bg2);color:var(--txt);border:1px solid var(--line)}
+.btn-sm{padding:9px 12px;font-size:13px;width:auto}
+
+/* ===== Results ===== */
+.results{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{
+  background:var(--bg2);border:1px solid var(--line);border-radius:13px;padding:13px 14px;
+}
+.stat.full{grid-column:1/-1}
+.stat .k{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+.stat .v{font-size:22px;font-weight:800;margin-top:3px;line-height:1.1}
+.stat .v small{font-size:13px;color:var(--mut);font-weight:600}
+.stat.hi{background:linear-gradient(135deg,rgba(61,123,255,.18),rgba(34,211,238,.12));border-color:rgba(61,123,255,.4)}
+.stat.hi .v{color:var(--acc2)}
+.stat.ok{border-color:rgba(34,197,94,.4)}.stat.ok .v{color:var(--ok)}
+.stat.warn{border-color:rgba(245,158,11,.4)}.stat.warn .v{color:var(--warn)}
+.stat.danger{border-color:rgba(239,68,68,.4)}.stat.danger .v{color:var(--danger)}
+
+/* equipment list */
+.eq{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.eq input{padding:11px 12px;font-size:15px}
+.eq .nm{flex:2}.eq .pw{flex:1.1}.eq .qt{flex:.7}
+.eq .del{flex:0 0 auto;width:40px;height:44px;border-radius:11px;background:var(--bg2);border:1px solid var(--line);color:var(--danger);font-size:20px;cursor:pointer;display:grid;place-items:center}
+.eq .del:active{background:rgba(239,68,68,.15)}
+.eq-head{display:flex;gap:8px;font-size:11px;color:var(--mut2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.eq-head .nm{flex:2}.eq-head .pw{flex:1.1}.eq-head .qt{flex:.7}.eq-head .sp{flex:0 0 40px}
+.sector{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--bg2)}
+.sector-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.sector-title{font-weight:700;font-size:15px}
+.sector-sub{margin-left:auto;font-size:12px;color:var(--acc2);font-weight:700}
+.sector-del{width:30px;height:30px;border-radius:8px;background:var(--card);border:1px solid var(--line);color:var(--danger);cursor:pointer;font-size:18px;flex:0 0 auto;line-height:1}
+.add-eq{margin-top:4px}
+.cat-picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+
+.hint{font-size:12px;color:var(--mut2);margin-top:8px;line-height:1.5}
+.hint b{color:var(--mut)}
+.divider{height:1px;background:var(--line);margin:14px 0}
+.aspect-vis{margin-top:12px;display:grid;place-items:center;padding:14px;background:var(--bg2);border-radius:12px;border:1px solid var(--line)}
+.aspect-box{border:2px solid var(--acc);border-radius:6px;background:rgba(61,123,255,.1);position:relative;max-width:100%}
+.aspect-box .lbl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;color:var(--mut);white-space:nowrap}
+
+/* gerador de imagem de teste */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:9px 13px;border-radius:20px;border:1px solid var(--line);background:var(--bg2);color:var(--mut);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.chip.on{background:linear-gradient(135deg,var(--acc),#5a8bff);color:#fff;border-color:transparent}
+.chip:active{transform:scale(.96)}
+input[type=color]{width:52px;height:46px;padding:4px;border-radius:12px;background:var(--bg2);border:1px solid var(--line);cursor:pointer}
+input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
+.ti-preview{margin:12px 0;padding:8px;background:#0a0a0a;border:1px solid var(--line);border-radius:12px;overflow:auto;display:grid;place-items:center;min-height:80px}
+.ti-preview canvas{max-width:100%;max-height:320px;width:auto;height:auto;display:block;image-rendering:auto}
+
+/* ===== Bottom nav ===== */
+/* ===== Mobile: sidebar vira gaveta (drawer) ===== */
+@media (max-width:860px){
+  .topbar{
+    display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:35;
+    padding:calc(var(--safe-top) + 10px) 14px 10px;
+    background:rgba(11,16,32,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
+  }
+  .sidebar{
+    position:fixed;left:0;top:0;height:100dvh;width:236px;
+    transform:translateX(-100%);transition:transform .22s ease;box-shadow:0 0 40px rgba(0,0,0,.55);
+  }
+  body.drawer-open .sidebar{transform:translateX(0)}
+  body.collapsed .sidebar{width:236px}
+  body.collapsed .side-logo{justify-content:flex-start;padding-left:8px}
+  body.collapsed .side-logo .logo-full{display:block}
+  body.collapsed .side-logo .logo-mark-img{display:none}
+  body.collapsed .side-nav button{justify-content:flex-start;padding:11px 12px}
+  body.collapsed .side-nav button span{display:inline}
+  .collapse-btn{display:none}
+  .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s;z-index:38}
+  body.drawer-open .scrim{opacity:1;pointer-events:auto}
+  main{padding:16px 14px 40px}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="side-logo">
+      <img class="logo-full" src="logo.png" alt="Projetech Eventos">
+      <img class="logo-mark-img" src="logo-mark.png" alt="Projetech">
+    </div>
+    <nav class="side-nav">
+      <button class="on" data-scr="pixel"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg><span>Pixel Map</span></button>
+      <button data-scr="power"><svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11l-1 8.5 8.5-11.5H12z"/></svg><span>Elétrica</span></button>
+      <button data-scr="proj"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="14" height="10" rx="2"/><circle cx="9" cy="12" r="2.4"/><path d="M16 10l5-2v8l-5-2"/></svg><span>Projeção</span></button>
+    </nav>
+    <button class="collapse-btn" id="collapseBtn" aria-label="Recolher menu" title="Recolher / expandir">
+      <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+  </aside>
+
+  <div class="content">
+    <div class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="Abrir menu"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <img class="topbar-logo" src="logo.png" alt="Projetech Eventos">
+    </div>
+
+<main>
+  <!-- ============ PIXEL MAP ============ -->
+  <section class="screen active" id="scr-pixel">
+    <div class="screen-title">Pixel Map · LED</div>
+    <p class="screen-sub">Calcule resolução, dimensão e pitch do painel</p>
+
+    <div class="card">
+      <h3>Módulo (gabinete)</h3>
+      <div class="row">
+        <div class="field"><label>Largura</label><div class="suffix"><input type="number" id="mw" value="0.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Altura</label><div class="suffix"><input type="number" id="mh" value="0.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label>Resolução</label>
+        <select id="preset">
+          <option value="128x128">P3.9 — 128 × 128 px</option>
+          <option value="168x168">P2.9 — 168 × 168 px</option>
+          <option value="200x200">P2.5 — 200 × 200 px</option>
+          <option value="256x256">P1.9 — 256 × 256 px</option>
+          <option value="custom">Personalizado</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <div class="field"><label>Resolução H</label><div class="suffix"><input type="number" id="mpxw" value="128" inputmode="numeric"><span>px</span></div></div>
+        <div class="field"><label>Resolução V</label><div class="suffix"><input type="number" id="mpxh" value="128" inputmode="numeric"><span>px</span></div></div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <div class="field"><label>Peso / gabinete <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="mkg" value="" placeholder="—" inputmode="decimal"><span>kg</span></div></div>
+        <div class="field"><label>Consumo médio / gabinete <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="mavg" value="" placeholder="—" inputmode="decimal"><span>W</span></div></div>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label>Consumo máximo / gabinete <small style="color:var(--mut2)">(opc.)</small></label>
+        <div class="suffix"><input type="number" id="mmax" value="" placeholder="—" inputmode="decimal"><span>W</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Dimensão</h3>
+      <div class="row">
+        <div class="field"><label>Largura</label><div class="suffix"><input type="number" id="wallw" value="3" step="0.01" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Altura</label><div class="suffix"><input type="number" id="wallh" value="1.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
+      </div>
+      <div class="hint">A quantidade de gabinetes é calculada pela dimensão ÷ tamanho do módulo (gabinetes inteiros).</div>
+    </div>
+
+    <div class="card" id="pixel-results-card">
+      <h3>Resultado</h3>
+      <div class="results" id="pixelResults"></div>
+      <div class="divider"></div>
+      <div class="row">
+        <div class="field">
+          <label>Pessoa de referência</label>
+          <div class="seg" id="segPerson">
+            <button data-on="1" class="on">Mostrar</button>
+            <button data-on="0">Ocultar</button>
+          </div>
+        </div>
+        <div class="field" id="personHField">
+          <label>Altura da pessoa</label>
+          <div class="suffix"><input type="number" id="personH" value="1.70" step="0.05" min="0.5" inputmode="decimal"><span>m</span></div>
+        </div>
+      </div>
+      <div class="aspect-vis"><svg id="aspectSvg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Painel com pessoa de referência"></svg></div>
+    </div>
+
+    <div class="card">
+      <h3>Imagem de teste (PNG)</h3>
+      <div class="field">
+        <label>Fundo</label>
+        <div class="seg" id="segBg">
+          <button data-b="grad" class="on">Gradiente</button>
+          <button data-b="solid">Sólido</button>
+          <button data-b="bars">Barras</button>
+          <button data-b="checker">Xadrez</button>
+        </div>
+      </div>
+      <div class="row" style="align-items:flex-start">
+        <div class="field" style="flex:0 0 auto">
+          <label>Cor</label>
+          <input type="color" id="tiColor" value="#ff0000">
+        </div>
+        <div class="field" style="flex:0 0 auto;display:none" id="f-color2">
+          <label>Cor 2</label>
+          <input type="color" id="tiColor2" value="#000000">
+        </div>
+        <div class="field">
+          <label>Marcações</label>
+          <div class="chips" id="tiChips">
+            <button class="chip on" data-opt="grid">Grade</button>
+            <button class="chip on" data-opt="numbers">Números</button>
+            <button class="chip on" data-opt="circle">Círculo</button>
+            <button class="chip on" data-opt="diag">Diagonais</button>
+            <button class="chip" data-opt="info">Info</button>
+            <button class="chip" data-opt="logo">Logo</button>
+            <button class="chip" data-opt="border">Borda</button>
+          </div>
+        </div>
+      </div>
+      <div id="tiInfoOpts" style="display:none;margin-top:12px">
+        <div class="field" style="flex:0 0 auto">
+          <label>Cor da info</label>
+          <input type="color" id="tiInfoColor" value="#ffffff">
+        </div>
+        <div class="field">
+          <label>Escala da info <span id="infoScaleVal" style="color:var(--mut2)">3%</span></label>
+          <input type="range" id="infoScale" min="1" max="20" value="3" style="width:100%">
+        </div>
+        <div class="field">
+          <label>Fonte da info</label>
+          <select id="tiInfoFont">
+            <option value="sans-serif">Sans (padrão)</option>
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="'Segoe UI', sans-serif">Segoe UI</option>
+            <option value="Verdana, sans-serif">Verdana</option>
+            <option value="Tahoma, sans-serif">Tahoma</option>
+            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+            <option value="Calibri, sans-serif">Calibri</option>
+            <option value="'Century Gothic', sans-serif">Century Gothic</option>
+            <option value="'Arial Narrow', Arial, sans-serif">Arial Narrow (condensada)</option>
+            <option value="Impact, sans-serif">Impact (grossa)</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="'Times New Roman', serif">Times New Roman</option>
+            <option value="Garamond, serif">Garamond</option>
+            <option value="'Palatino Linotype', serif">Palatino</option>
+            <option value="'Courier New', monospace">Courier New (mono)</option>
+            <option value="Consolas, monospace">Consolas (mono)</option>
+            <option value="'Comic Sans MS', cursive">Comic Sans</option>
+          </select>
+        </div>
+      </div>
+      <div id="tiLogoOpts" style="display:none;margin-top:12px">
+        <div class="field">
+          <label>Logo Projetech</label>
+          <div class="seg" id="segLogoSrc">
+            <button data-s="1" class="on" style="flex:0 0 38px">1</button>
+            <button data-s="2" style="flex:0 0 38px">2</button>
+            <button data-s="3" style="flex:0 0 38px">3</button>
+            <button data-s="4" style="flex:0 0 38px">4</button>
+            <button data-s="custom">Escolher arquivo</button>
+          </div>
+        </div>
+        <div class="field" id="f-logo-upload" style="display:none">
+          <label>Arquivo do logo (PNG/JPG)</label>
+          <input type="file" id="logoFile" accept="image/*">
+        </div>
+        <div class="field">
+          <label>Posição</label>
+          <select id="logoPos">
+            <option value="br">Inferior direita</option>
+            <option value="bl">Inferior esquerda</option>
+            <option value="tr">Superior direita</option>
+            <option value="tl">Superior esquerda</option>
+            <option value="center">Centro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Escala <span id="logoScaleVal" style="color:var(--mut2)">30%</span></label>
+          <input type="range" id="logoScale" min="5" max="100" value="30" style="width:100%">
+        </div>
+      </div>
+      <div id="tiBorderOpts" style="display:none;margin-top:12px">
+        <div class="row" style="align-items:flex-start">
+          <div class="field" style="flex:0 0 auto">
+            <label>Cor da borda</label>
+            <input type="color" id="borderColor" value="#ffffff">
+          </div>
+          <div class="field">
+            <label>Espessura <span id="borderScaleVal" style="color:var(--mut2)">15 px</span></label>
+            <input type="range" id="borderScale" min="1" max="150" value="15" style="width:100%">
+          </div>
+        </div>
+      </div>
+      <div class="ti-preview"><canvas id="tiCanvas"></canvas></div>
+      <button class="btn btn-primary" id="tiDownload">⬇ Baixar PNG</button>
+      <div class="hint" id="tiInfo"></div>
+    </div>
+  </section>
+
+  <!-- ============ ELÉTRICA ============ -->
+  <section class="screen" id="scr-power">
+    <div class="screen-title">Elétrica</div>
+    <p class="screen-sub">Potência, corrente, disjuntor e cabo do circuito</p>
+
+    <div class="card">
+      <h3>Rede</h3>
+      <div class="field">
+        <label>Tensão</label>
+        <div class="seg" id="segVolt">
+          <button data-v="127">127 V</button>
+          <button data-v="220" class="on">220 V</button>
+          <button data-v="380">380 V</button>
+          <button data-v="custom">Outra</button>
+        </div>
+        <div class="suffix" id="customVoltWrap" style="display:none;margin-top:10px">
+          <input type="number" id="customVolt" placeholder="Tensão personalizada" inputmode="decimal"><span>V</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Sistema</label>
+        <div class="seg" id="segPhase">
+          <button data-p="1" class="on">Monofásico</button>
+          <button data-p="2">Bifásico</button>
+          <button data-p="3">Trifásico</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Fator de potência</label>
+        <div class="suffix"><input type="number" id="pf" value="1" step="0.01" min="0.1" max="1" inputmode="decimal"><span>FP</span></div>
+        <div class="hint">Recomendado <b>0,8</b> para gerador. <a id="pfGen" style="color:var(--acc2);cursor:pointer;font-weight:700">aplicar</a></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Equipamentos / cargas</h3>
+      <div id="sectors"></div>
+      <div class="cat-picker" id="catPicker" style="display:none"></div>
+      <button class="btn btn-ghost btn-sm" id="addSector" style="width:100%">+ Adicionar setor</button>
+      <div class="hint">Monte a lista por setor. Equipamento da lista = potência automática; item personalizado = você informa a potência.</div>
+    </div>
+
+    <div class="card">
+      <h3>Resultado</h3>
+      <div class="results" id="powerResults"></div>
+      <div class="hint" id="powerHint"></div>
+    </div>
+
+    <div class="card">
+      <h3>Queda de tensão</h3>
+      <div class="row">
+        <div class="field"><label>Comprimento do cabo</label><div class="suffix"><input type="number" id="vdLen" value="30" step="1" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Bitola</label>
+          <select id="vdSec">
+            <option value="auto">Auto (cabo sugerido)</option>
+            <option value="1.5">1,5 mm²</option>
+            <option value="2.5">2,5 mm²</option>
+            <option value="4">4 mm²</option>
+            <option value="6">6 mm²</option>
+            <option value="10">10 mm²</option>
+            <option value="16">16 mm²</option>
+            <option value="25">25 mm²</option>
+            <option value="35">35 mm²</option>
+            <option value="50">50 mm²</option>
+            <option value="70">70 mm²</option>
+            <option value="95">95 mm²</option>
+            <option value="120">120 mm²</option>
+            <option value="150">150 mm²</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Condutor</label>
+          <select id="vdMat">
+            <option value="0.0178">Cobre 20°C (0,0178 Ω·mm²/m)</option>
+            <option value="0.0206">Cobre 70°C (0,0206 Ω·mm²/m)</option>
+            <option value="0.034">Alumínio 70°C (0,034 Ω·mm²/m)</option>
+            <option value="0.0283">Alumínio 20°C (0,0283 Ω·mm²/m)</option>
+          </select>
+        </div>
+        <div class="field"><label>Limite aceitável</label><div class="suffix"><input type="number" id="vdLimit" value="4" step="0.5" min="1" inputmode="decimal"><span>%</span></div></div>
+      </div>
+      <div class="results" id="vdResults"></div>
+      <div class="hint" id="vdHint"></div>
+    </div>
+
+    <details class="card ref-card">
+      <summary>Tabela de referência · cabo (mm² × A)</summary>
+      <div class="table-wrap">
+        <table class="ref-table" id="cableRefTable">
+          <thead><tr><th>Bitola</th><th>Corrente máx. (A)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="hint" id="cableRefHint">
+        Valores extraídos da <b>ABNT NBR 5410</b> — método de instalação <b>B1</b> (condutores em eletroduto sobre parede), cobre, isolação PVC, 30&nbsp;°C. Em condições diferentes (agrupamento de cabos, temperatura ambiente, cabo enrolado, outro tipo de instalação), a corrente admissível muda — nesses casos, verifique a norma.
+        <a href="https://www.ipaam.am.gov.br/wp-content/uploads/2021/01/NBR-05410-05-Instala%C3%A7%C3%B5es-El%C3%A9tricas-de-baixa-Tens%C3%A3o.pdf" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;color:var(--acc2);font-weight:700">Consultar a NBR 5410 (todas as condições) ›</a>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PROJETOR ============ -->
+  <section class="screen" id="scr-proj">
+    <div class="screen-title">Projeção</div>
+    <p class="screen-sub">Distância de projeção pelo throw ratio</p>
+
+    <div class="card">
+      <h3>O que você quer calcular?</h3>
+      <div class="seg" id="segProj">
+        <button data-m="dist" class="on">Distância</button>
+        <button data-m="throw">Throw ratio</button>
+        <button data-m="width">Tamanho</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Dados</h3>
+      <div class="field" id="f-throw">
+        <label>Throw ratio da lente (D/L)</label>
+        <div class="suffix"><input type="number" id="throw" value="1.5" step="0.01" inputmode="decimal"><span>:1</span></div>
+      </div>
+      <div class="field" id="f-sizeunit">
+        <label>Medir a tela por</label>
+        <div class="seg" id="segSizeUnit">
+          <button data-u="width" class="on">Largura (m)</button>
+          <button data-u="diag">Diagonal (pol)</button>
+        </div>
+      </div>
+      <div class="field" id="f-width">
+        <label>Largura da imagem</label>
+        <div class="suffix"><input type="number" id="imgW" value="4" step="0.1" inputmode="decimal"><span>m</span></div>
+      </div>
+      <div class="field" id="f-diag" style="display:none">
+        <label>Tamanho da tela (diagonal)</label>
+        <div class="suffix"><input type="number" id="imgDiag" value="150" step="1" inputmode="decimal"><span>"</span></div>
+      </div>
+      <div class="field" id="f-dist">
+        <label>Distância projetor → tela</label>
+        <div class="suffix"><input type="number" id="dist" value="6" step="0.1" inputmode="decimal"><span>m</span></div>
+      </div>
+      <div class="field">
+        <label>Proporção da imagem</label>
+        <select id="aspect">
+          <option value="1.7778">16:9</option>
+          <option value="1.6">16:10</option>
+          <option value="1.3333">4:3</option>
+          <option value="2.3529">21:9</option>
+          <option value="1">1:1</option>
+          <option value="custom">Personalizada</option>
+        </select>
+      </div>
+      <div class="field" id="f-aspect-custom" style="display:none">
+        <label>Proporção personalizada (L : A)</label>
+        <div class="row">
+          <div class="field"><div class="suffix"><input type="number" id="aspW" value="16" step="0.01" inputmode="decimal"><span>L</span></div></div>
+          <div class="field"><div class="suffix"><input type="number" id="aspH" value="9" step="0.01" inputmode="decimal"><span>A</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Resultado</h3>
+      <div class="results" id="projResults"></div>
+      <div class="hint">Fórmula: <b>Distância = Throw ratio × Largura</b>. O throw ratio vem na ficha da lente (ex.: 1.2–1.8:1). Quanto maior, mais longe o projetor fica.</div>
+    </div>
+
+    <div class="card">
+      <h3>Blending (multi-projetor)</h3>
+      <div class="row">
+        <div class="field"><label>Projetores (horizontal)</label><input type="number" id="bpH" value="2" min="1" inputmode="numeric"></div>
+        <div class="field"><label>Projetores (vertical)</label><input type="number" id="bpV" value="1" min="1" inputmode="numeric"></div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <div class="field"><label>Sobreposição (blend)</label><div class="suffix"><input type="number" id="bOverlap" value="20" step="1" min="0" max="50" inputmode="decimal"><span>%</span></div></div>
+        <div class="field"><label>Largura total da tela</label><div class="suffix"><input type="number" id="bWidth" value="8" step="0.1" inputmode="decimal"><span>m</span></div></div>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label>Resolução nativa do projetor</label>
+        <select id="bResPreset">
+          <option value="1920x1200">WUXGA — 1920 × 1200</option>
+          <option value="1920x1080">Full HD — 1920 × 1080</option>
+          <option value="3840x2160">4K UHD — 3840 × 2160</option>
+          <option value="1280x800">WXGA — 1280 × 800</option>
+          <option value="1024x768">XGA — 1024 × 768</option>
+          <option value="custom">Personalizada</option>
+        </select>
+      </div>
+      <div class="row" id="bResCustom" style="margin-top:14px;display:none">
+        <div class="field"><label>Largura</label><div class="suffix"><input type="number" id="bResW" value="1920" inputmode="numeric"><span>px</span></div></div>
+        <div class="field"><label>Altura</label><div class="suffix"><input type="number" id="bResH" value="1200" inputmode="numeric"><span>px</span></div></div>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label>Throw ratio da lente</label>
+        <div class="suffix"><input type="number" id="bThrow" value="1.5" step="0.01" inputmode="decimal"><span>:1</span></div>
+      </div>
+      <div class="results" id="blendResults" style="margin-top:6px"></div>
+      <div class="hint">A largura total da tela é dividida entre os projetores considerando as zonas de sobreposição. A imagem de cada projetor segue a proporção da resolução nativa.</div>
+    </div>
+  </section>
+    </main>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+</div>
+
+<script src="equipment.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (n,d=0) => isFinite(n) ? n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}) : '—';
+
+/* ============ NAV (sidebar) ============ */
+document.querySelectorAll('.side-nav button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.side-nav button').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+    b.classList.add('on');
+    $('scr-'+b.dataset.scr).classList.add('active');
+    document.body.classList.remove('drawer-open');   // fecha a gaveta no mobile
+    window.scrollTo(0,0);
+  };
+});
+$('collapseBtn').onclick=()=>document.body.classList.toggle('collapsed');
+$('menuBtn').onclick=()=>document.body.classList.toggle('drawer-open');
+$('scrim').onclick=()=>document.body.classList.remove('drawer-open');
+
+/* ============ PIXEL MAP ============ */
+function calcPixel(){
+  const mw=+$('mw').value, mh=+$('mh').value;
+  const pxw=+$('mpxw').value, pxh=+$('mpxh').value;
+  const wallW=+$('wallw').value, wallH=+$('wallh').value;
+  const mkg=parseFloat($('mkg').value), mavg=parseFloat($('mavg').value), mmax=parseFloat($('mmax').value);
+
+  const cols=mw>0?Math.round(wallW/mw):0, rows=mh>0?Math.round(wallH/mh):0;
+  const modules=cols*rows;
+  const totPxW=pxw*cols, totPxH=pxh*rows;
+  const totPx=totPxW*totPxH;
+  const wM=cols*mw, hM=rows*mh;            // dimensão real (gabinetes inteiros)
+  const areaM2=wM*hM;
+  const pitch=mw>0&&pxw>0 ? (mw*1000)/pxw : 0;   // mm por pixel
+  const aspRatio=totPxH>0?totPxW/totPxH:0;
+
+  let html='';
+  const S=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  html+=S('Resolução total', `${fmt(totPxW)}×${fmt(totPxH)}<small> px</small>`,'hi full');
+  html+=S('Dimensão real', `${fmt(wM,2)} × ${fmt(hM,2)}<small> m</small>`);
+  html+=S('Área', `${fmt(areaM2,2)}<small> m²</small>`);
+  html+=S('Pixels totais', `${fmt(totPx)}<small> px</small>`);
+  html+=S('Pixel pitch', `${fmt(pitch,2)}<small> mm</small>`);
+  html+=S('Quantidade de gabinetes', `${fmt(modules)}<small> un</small>`);
+  html+=S('Proporção', simplifyAspect(totPxW,totPxH));
+  if(!isNaN(mkg)) html+=S('Peso total', `${fmt(modules*mkg,1)}<small> kg</small>`,'warn');
+  if(!isNaN(mavg)) html+=S('Consumo médio', `${fmt(modules*mavg/1000,2)}<small> kW</small>`,'warn');
+  if(!isNaN(mmax)) html+=S('Consumo máximo', `${fmt(modules*mmax/1000,2)}<small> kW</small>`,'danger');
+  $('pixelResults').innerHTML=html;
+
+  drawScene(wM,hM);
+  pmeta={totPxW,totPxH,cols,rows,pxw,pxh,pitch};
+  drawTest();
+}
+let showPerson=true, personHeight=1.7;
+let pmeta={};
+let curBg='grad';
+let infoSize=0.03;
+const tiOpts={grid:true,numbers:true,circle:true,diag:true,info:false,logo:false,border:false};
+let borderPx=15;
+// logo na imagem de teste
+let logoSource='1', logoPos='br', logoSizeFrac=0.30;
+const logoFiles={'1':'logo1.png','2':'logo2.png','3':'logo3.png','4':'logo4.png'};
+const logoImgs={};
+Object.keys(logoFiles).forEach(k=>{ const im=new Image(); im.onload=()=>drawTest(); im.src=logoFiles[k]; logoImgs[k]=im; });
+let customLogoImg=null;
+function activeLogo(){ if(logoSource==='custom') return customLogoImg; const im=logoImgs[logoSource]; return (im&&im.complete&&im.naturalWidth)?im:null; }
+// desenha o painel com a pessoa de referência, cotada, na mesma escala
+function drawScene(wM,hM){
+  const svg=$('aspectSvg'); if(!svg) return;
+  const cont=svg.parentElement;
+  if(!(wM>0)||!(hM>0)){svg.innerHTML='';return;}
+  const fx=n=>n.toFixed(1);
+  const availW0=Math.max(220,(cont.clientWidth||320)-28), maxH0=210, top0=10, bottom0=8;
+
+  // sem pessoa: só o painel
+  if(!showPerson){
+    const pad=12;
+    let s=Math.max(6,Math.min((availW0-pad)/wM,(maxH0-top0-bottom0)/hM));
+    const panelW=wM*s, panelH=hM*s, ground=top0+panelH, H=ground+bottom0, W=panelW+pad;
+    const lbl=panelW>72?`<text x="${fx(panelW/2)}" y="${fx(top0+panelH/2)}" fill="#93a0c7" font-size="12" text-anchor="middle" dominant-baseline="middle">${fmt(wM,2)}m × ${fmt(hM,2)}m</text>`:'';
+    svg.setAttribute('viewBox',`0 0 ${W.toFixed(0)} ${H.toFixed(0)}`);
+    svg.setAttribute('width',W.toFixed(0)); svg.setAttribute('height',H.toFixed(0));
+    svg.style.maxWidth='100%'; svg.style.height='auto';
+    svg.innerHTML=`<line x1="0" y1="${fx(ground)}" x2="${fx(W)}" y2="${fx(ground)}" stroke="#26325a" stroke-width="1"/>`+
+      `<rect x="0" y="${fx(top0)}" width="${fx(panelW)}" height="${fx(panelH)}" rx="4" fill="rgba(61,123,255,.14)" stroke="#3d7bff" stroke-width="2"/>`+lbl;
+    return;
+  }
+
+  const personH=personHeight>0?personHeight:1.7, top=top0, bottom=bottom0, gapPx=18, dimGap=14, rightPad=54;
+  const sW=(availW0-(gapPx+dimGap+rightPad))/(wM+personH*0.34);
+  const sH=(maxH0-top-bottom)/Math.max(hM,personH);
+  const s=Math.max(6,Math.min(sW,sH));                 // px por metro
+
+  const panelW=wM*s, panelH=hM*s, perH=personH*s, perW=perH*0.34;
+  const sceneH=Math.max(panelH,perH), ground=top+sceneH, H=ground+bottom;
+  const W=panelW+gapPx+perW+dimGap+rightPad;
+  const panelY=ground-panelH, perX=panelW+gapPx, perY=ground-perH, cx=perX+perW/2, dimX=perX+perW+dimGap;
+
+  // pessoa (cabeça + tronco + pernas)
+  const per='#9aa7d0', r=perW*0.34, headCy=perY+r;
+  const shoulderW=perW*0.82, torsoTop=headCy+r*0.72, hipY=perY+perH*0.56, legW=perW*0.30, legGap=perW*0.12;
+  const person=
+    `<circle cx="${fx(cx)}" cy="${fx(headCy)}" r="${fx(r)}" fill="${per}"/>`+
+    `<rect x="${fx(cx-shoulderW/2)}" y="${fx(torsoTop)}" width="${fx(shoulderW)}" height="${fx(hipY-torsoTop)}" rx="${fx(shoulderW*0.34)}" fill="${per}"/>`+
+    `<rect x="${fx(cx-legGap/2-legW)}" y="${fx(hipY-legW*0.5)}" width="${fx(legW)}" height="${fx(ground-hipY+legW*0.5)}" rx="${fx(legW*0.42)}" fill="${per}"/>`+
+    `<rect x="${fx(cx+legGap/2)}" y="${fx(hipY-legW*0.5)}" width="${fx(legW)}" height="${fx(ground-hipY+legW*0.5)}" rx="${fx(legW*0.42)}" fill="${per}"/>`;
+
+  // cota vertical da pessoa
+  const dc='#93a0c7', tk=5, my=(perY+ground)/2;
+  const dim=
+    `<line x1="${fx(dimX)}" y1="${fx(perY)}" x2="${fx(dimX)}" y2="${fx(ground)}" stroke="${dc}" stroke-width="1.2"/>`+
+    `<line x1="${fx(dimX-tk)}" y1="${fx(perY)}" x2="${fx(dimX+tk)}" y2="${fx(perY)}" stroke="${dc}" stroke-width="1.2"/>`+
+    `<line x1="${fx(dimX-tk)}" y1="${fx(ground)}" x2="${fx(dimX+tk)}" y2="${fx(ground)}" stroke="${dc}" stroke-width="1.2"/>`+
+    `<polygon points="${fx(dimX-3)},${fx(perY+7)} ${fx(dimX+3)},${fx(perY+7)} ${fx(dimX)},${fx(perY+1)}" fill="${dc}"/>`+
+    `<polygon points="${fx(dimX-3)},${fx(ground-7)} ${fx(dimX+3)},${fx(ground-7)} ${fx(dimX)},${fx(ground-1)}" fill="${dc}"/>`+
+    `<text x="${fx(dimX+11)}" y="${fx(my)}" fill="${dc}" font-size="12" font-weight="700" text-anchor="middle" transform="rotate(-90 ${fx(dimX+11)} ${fx(my)})">${fmt(personH,2)} m</text>`;
+
+  const panelLbl = panelW>72 ? `<text x="${fx(panelW/2)}" y="${fx(panelY+panelH/2)}" fill="#93a0c7" font-size="12" text-anchor="middle" dominant-baseline="middle">${fmt(wM,2)}m × ${fmt(hM,2)}m</text>` : '';
+  const panel=
+    `<rect x="0" y="${fx(panelY)}" width="${fx(panelW)}" height="${fx(panelH)}" rx="4" fill="rgba(61,123,255,.14)" stroke="#3d7bff" stroke-width="2"/>`+panelLbl;
+
+  const groundLine=`<line x1="0" y1="${fx(ground)}" x2="${fx(W)}" y2="${fx(ground)}" stroke="#26325a" stroke-width="1"/>`;
+
+  svg.setAttribute('viewBox',`0 0 ${W.toFixed(0)} ${H.toFixed(0)}`);
+  svg.setAttribute('width',W.toFixed(0)); svg.setAttribute('height',H.toFixed(0));
+  svg.style.maxWidth='100%'; svg.style.height='auto';
+  svg.innerHTML=groundLine+panel+person+dim;
+}
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a;}
+function simplifyAspect(w,h){if(!w||!h)return'—';const g=gcd(w,h);return `${w/g}:${h/g}`;}
+['mw','mh','mpxw','mpxh','wallw','wallh','mkg','mavg','mmax'].forEach(id=>$(id).addEventListener('input',calcPixel));
+
+// pessoa de referência: mostrar/ocultar + altura editável
+$('segPerson').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segPerson').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  showPerson=b.dataset.on==='1';
+  $('personHField').style.display=showPerson?'block':'none';
+  calcPixel();
+});
+$('personH').addEventListener('input',()=>{personHeight=parseFloat($('personH').value)||1.7;calcPixel();});
+
+// ===== Gerador de imagem de teste (PNG na resolução do painel) =====
+function drawTest(){
+  const cv=$('tiCanvas'); if(!cv||!pmeta.totPxW) return;
+  const {totPxW:W,totPxH:H,cols,rows,pxw,pxh}=pmeta;
+  if(!(W>0)||!(H>0)||!(cols>0)||!(rows>0)){$('tiInfo').textContent='Ajuste a dimensão para gerar a imagem.';return;}
+  cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  const color=$('tiColor').value;
+  ctx.clearRect(0,0,W,H);
+
+  // fundo
+  if(curBg==='solid'){ctx.fillStyle=color;ctx.fillRect(0,0,W,H);}
+  else if(curBg==='grad'){
+    const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#000'); g.addColorStop(1,color);
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  } else if(curBg==='bars'){
+    const bars=['#ffffff','#ffff00','#00ffff','#00ff00','#ff00ff','#ff0000','#0000ff','#000000'];
+    const bw=W/bars.length;
+    bars.forEach((c,i)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(i*bw),0,Math.ceil(bw),H);});
+  } else if(curBg==='checker'){
+    ctx.fillStyle=$('tiColor2').value;ctx.fillRect(0,0,W,H); ctx.fillStyle=color;
+    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){ if((r+c)%2===0) ctx.fillRect(c*pxw,r*pxh,pxw,pxh); }
+  }
+
+  const lw=Math.max(1,Math.round(Math.min(W,H)/700));
+  const lwMark=Math.max(lw+1,Math.round(lw*1.8));  // círculo/diagonais um pouco mais grossos que a grade
+
+  // grade dos gabinetes
+  if(tiOpts.grid){
+    ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=lw; ctx.beginPath();
+    for(let c=1;c<cols;c++){const x=Math.round(c*pxw)+.5; ctx.moveTo(x,0); ctx.lineTo(x,H);}
+    for(let r=1;r<rows;r++){const y=Math.round(r*pxh)+.5; ctx.moveTo(0,y); ctx.lineTo(W,y);}
+    ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,.8)'; ctx.strokeRect(lw/2,lw/2,W-lw,H-lw);
+  }
+  // círculo central
+  if(tiOpts.circle){
+    ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=lwMark;
+    ctx.beginPath(); ctx.arc(W/2,H/2,Math.min(W,H)*0.46,0,Math.PI*2); ctx.stroke();
+  }
+  // diagonais
+  if(tiOpts.diag){
+    ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=lwMark;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(W,H); ctx.moveTo(W,0); ctx.lineTo(0,H); ctx.stroke();
+  }
+  // números das colunas (embaixo, em círculos brancos)
+  if(tiOpts.numbers){
+    const rad=Math.max(8,Math.min(pxw*0.22,H*0.06,70));
+    const y=H-rad-Math.max(6,H*0.012);
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`bold ${(rad*1.1).toFixed(0)}px sans-serif`;
+    for(let c=0;c<cols;c++){
+      const x=c*pxw+pxw/2;
+      ctx.beginPath(); ctx.arc(x,y,rad,0,Math.PI*2);
+      ctx.fillStyle='#fff'; ctx.fill();
+      ctx.lineWidth=Math.max(1,rad*0.12); ctx.strokeStyle='#000'; ctx.stroke();
+      ctx.fillStyle='#000'; ctx.fillText(String(c+1),x,y);
+    }
+  }
+  // info (tamanho, cor e fonte configuráveis; sombra suave)
+  if(tiOpts.info){
+    const fs=Math.max(12,Math.min(W,H)*infoSize);
+    ctx.font=`bold ${fs.toFixed(0)}px ${$('tiInfoFont').value}`; ctx.textAlign='left'; ctx.textBaseline='top';
+    const txt=`${W}x${H}px · ${cols}x${rows} gab · pitch ${fmt(pmeta.pitch,2)}mm`;
+    ctx.save();
+    ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=Math.max(1.5,fs*0.1); ctx.shadowOffsetY=Math.max(1,fs*0.03);
+    ctx.fillStyle=$('tiInfoColor').value; ctx.fillText(txt,W*0.012,H*0.012);
+    ctx.restore();
+  }
+  // logo
+  if(tiOpts.logo){
+    const lg=activeLogo();
+    if(lg && lg.complete && lg.naturalWidth){
+      const lw=W*logoSizeFrac, lh=lw*(lg.naturalHeight/lg.naturalWidth), m=Math.max(10,W*0.02);
+      let x,y;
+      if(logoPos==='center'){ x=(W-lw)/2; y=(H-lh)/2; }
+      else{ x=logoPos.includes('l')?m:(W-lw-m); y=logoPos.includes('t')?m:(H-lh-m); }
+      ctx.drawImage(lg,x,y,lw,lh);
+    }
+  }
+  // borda da imagem
+  if(tiOpts.border){
+    const bw=Math.max(1,borderPx);
+    ctx.strokeStyle=$('borderColor').value; ctx.lineWidth=bw;
+    ctx.strokeRect(bw/2,bw/2,W-bw,H-bw);
+  }
+  $('tiInfo').textContent=`Imagem: ${fmt(W)} × ${fmt(H)} px`;
+}
+$('segBg').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segBg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); curBg=b.dataset.b;
+  $('f-color2').style.display = curBg==='checker' ? 'block':'none';
+  drawTest();
+});
+$('tiColor2').addEventListener('input',drawTest);
+$('tiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
+  const k=b.dataset.opt; tiOpts[k]=!tiOpts[k]; b.classList.toggle('on',tiOpts[k]);
+  if(k==='info') $('tiInfoOpts').style.display=tiOpts.info?'block':'none';
+  if(k==='logo') $('tiLogoOpts').style.display=tiOpts.logo?'block':'none';
+  if(k==='border') $('tiBorderOpts').style.display=tiOpts.border?'block':'none';
+  drawTest();
+});
+$('borderScale').addEventListener('input',()=>{
+  borderPx=+$('borderScale').value;
+  $('borderScaleVal').textContent=$('borderScale').value+' px';
+  drawTest();
+});
+$('borderColor').addEventListener('input',drawTest);
+$('segLogoSrc').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segLogoSrc').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); logoSource=b.dataset.s;
+  $('f-logo-upload').style.display = logoSource==='custom' ? 'block':'none';
+  drawTest();
+});
+$('logoScale').addEventListener('input',()=>{
+  logoSizeFrac=(+$('logoScale').value)/100;
+  $('logoScaleVal').textContent=$('logoScale').value+'%';
+  drawTest();
+});
+$('logoPos').addEventListener('change',()=>{ logoPos=$('logoPos').value; drawTest(); });
+$('logoFile').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ const img=new Image(); img.onload=()=>{ customLogoImg=img; drawTest(); }; img.src=rd.result; };
+  rd.readAsDataURL(f);
+});
+$('infoScale').addEventListener('input',()=>{
+  infoSize=(+$('infoScale').value)/100;
+  $('infoScaleVal').textContent=$('infoScale').value+'%';
+  drawTest();
+});
+$('tiColor').addEventListener('input',drawTest);
+$('tiInfoColor').addEventListener('input',drawTest);
+$('tiInfoFont').addEventListener('change',drawTest);
+$('tiDownload').onclick=()=>{
+  const cv=$('tiCanvas'); if(!cv.width) return;
+  cv.toBlob(b=>{
+    if(!b) return;
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    a.download=`Projetech Calculator - Pixel Map - ${pmeta.totPxW} x ${pmeta.totPxH}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  },'image/png');
+};
+
+// resolução (painéis da casa) <-> resolução customizável + auto-preenche specs do gabinete
+// avg = consumo médio (W), max = consumo máximo (W), kg = peso — por gabinete. null = ainda a definir.
+const pxPresets={
+  '128x128':{avg:null,max:null,kg:null}, // P3.9
+  '168x168':{avg:null,max:null,kg:null}, // P2.9
+  '200x200':{avg:null,max:null,kg:null}, // P2.5
+  '256x256':{avg:null,max:null,kg:null}  // P1.9
+};
+$('preset').addEventListener('change',()=>{
+  const v=$('preset').value;
+  if(v!=='custom'){
+    const[w,h]=v.split('x'); $('mpxw').value=w; $('mpxh').value=h;
+    const p=pxPresets[v];
+    if(p.kg!=null)$('mkg').value=p.kg;
+    if(p.avg!=null)$('mavg').value=p.avg;
+    if(p.max!=null)$('mmax').value=p.max;
+  }
+  calcPixel();
+});
+function syncPreset(){
+  const key=$('mpxw').value+'x'+$('mpxh').value;
+  $('preset').value=pxPresets[key]?key:'custom';
+}
+['mpxw','mpxh'].forEach(id=>$(id).addEventListener('input',syncPreset));
+
+/* ============ ELÉTRICA ============ */
+let volt=220, phase=1;
+$('segVolt').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segVolt').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  if(b.dataset.v==='custom'){
+    $('customVoltWrap').style.display='block';
+    volt=parseFloat($('customVolt').value)||0;
+    $('customVolt').focus();
+  }else{
+    $('customVoltWrap').style.display='none';
+    volt=+b.dataset.v;
+  }
+  calcPower();
+});
+$('customVolt').addEventListener('input',()=>{volt=parseFloat($('customVolt').value)||0;calcPower();});
+$('pfGen').onclick=()=>{$('pf').value='0.8';calcPower();};
+$('segPhase').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segPhase').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); phase=+b.dataset.p; calcPower();
+});
+['vdLen','vdLimit'].forEach(id=>$(id).addEventListener('input',calcVdrop));
+['vdSec','vdMat'].forEach(id=>$(id).addEventListener('change',calcVdrop));
+
+const breakers=[6,10,16,20,25,32,40,50,63,70,80,100,125,150,175,200,225,250];
+// NBR 5410 aprox., cobre, PVC, 2 condutores carregados (B1) — corrente máx (A) por seção (mm²)
+// ampacidade NBR 5410 (cobre, PVC, 2 condutores carregados, 30°C) por método de instalação
+const cableTables={
+  A1:[[1.5,15.5],[2.5,21],[4,28],[6,36],[10,50],[16,68],[25,89],[35,110],[50,134],[70,171],[95,207],[120,239],[150,275]],
+  B1:[[1.5,17.5],[2.5,24],[4,32],[6,41],[10,57],[16,76],[25,101],[35,125],[50,151],[70,192],[95,232],[120,269],[150,300]],
+  C: [[1.5,19.5],[2.5,27],[4,36],[6,46],[10,63],[16,85],[25,112],[35,138],[50,168],[70,213],[95,258],[120,299],[150,344]]
+};
+const cableMethod='B1';
+const activeCables=()=>cableTables[cableMethod];
+
+// tabela de referência bitola × corrente máxima
+function buildCableRef(){
+  const tb=$('cableRefTable'); if(!tb) return;
+  tb.querySelector('tbody').innerHTML=activeCables().map(([mm,amp])=>
+    `<tr data-mm="${mm}"><td>${fmt(mm,mm%1?1:0)} mm²</td><td>${fmt(amp,amp%1?1:0)} A</td></tr>`
+  ).join('');
+}
+function highlightCable(mm){
+  document.querySelectorAll('#cableRefTable tbody tr').forEach(tr=>tr.classList.toggle('hl', mm!=null && +tr.dataset.mm===mm));
+}
+buildCableRef();
+
+// índice de equipamentos + setores (equipment.js)
+const equipIndex={};
+let CATS=[];
+const catKey=c=>c.normalize('NFD').replace(/[^\w]/g,'').toLowerCase();
+function buildEquip(){
+  if(typeof EQUIP==='undefined') return;
+  const groups={};
+  EQUIP.forEach(e=>{ equipIndex[e.n.trim().toLowerCase()]=e; (groups[e.c]=groups[e.c]||[]).push(e); });
+  CATS=Object.keys(groups);
+  // um datalist por categoria
+  CATS.forEach(c=>{
+    const dl=document.createElement('datalist'); dl.id='dl_'+catKey(c);
+    groups[c].forEach(e=>{ const o=document.createElement('option'); o.value=e.n; o.textContent=e.w+' W'; dl.appendChild(o); });
+    document.body.appendChild(dl);
+  });
+  // datalist com todos os equipamentos (para setor personalizado)
+  const dlAll=document.createElement('datalist'); dlAll.id='dl_all';
+  EQUIP.forEach(e=>{ const o=document.createElement('option'); o.value=e.n; o.textContent=e.w+' W · '+e.c; dlAll.appendChild(o); });
+  document.body.appendChild(dlAll);
+  // seletor de setores
+  const cp=$('catPicker');
+  CATS.forEach(c=>{ const b=document.createElement('button'); b.className='chip'; b.textContent=c; b.onclick=()=>{ addSector(c); cp.style.display='none'; }; cp.appendChild(b); });
+  const nb=document.createElement('button'); nb.className='chip'; nb.textContent='+ Novo setor'; nb.style.borderStyle='dashed';
+  nb.onclick=()=>{ const name=prompt('Nome do setor:'); if(name && name.trim()){ addSector(name.trim(),'all'); cp.style.display='none'; } };
+  cp.appendChild(nb);
+}
+function equipByName(v){ return equipIndex[(v||'').trim().toLowerCase()]||null; }
+
+function eqRow(catK){
+  const div=document.createElement('div');
+  div.className='eq';
+  div.innerHTML=`<input class="nm" list="dl_${catK}" placeholder="Buscar equipamento…" autocomplete="off">
+    <input class="pw" type="number" inputmode="decimal" placeholder="W">
+    <input class="qt" type="number" inputmode="numeric" value="1">
+    <button class="del" title="Remover">×</button>`;
+  const nmI=div.querySelector('.nm'), pwI=div.querySelector('.pw'), qtI=div.querySelector('.qt');
+  div.querySelector('.del').onclick=()=>{div.remove();calcPower();};
+  nmI.addEventListener('input',()=>{ const f=equipByName(nmI.value); if(f) pwI.value=f.w; calcPower(); });
+  pwI.addEventListener('input',calcPower);
+  qtI.addEventListener('input',calcPower);
+  return div;
+}
+function addSector(cat, dlKey){
+  const catK=dlKey||catKey(cat);
+  const sec=document.createElement('div'); sec.className='sector'; sec.dataset.cat=cat;
+  sec.innerHTML=`<div class="sector-head"><span class="sector-title">${cat}</span><span class="sector-sub"></span><button class="sector-del" title="Remover setor">×</button></div>
+    <div class="eqlist"></div>
+    <button class="btn btn-ghost btn-sm add-eq" style="width:100%">+ adicionar equipamento</button>`;
+  const list=sec.querySelector('.eqlist');
+  sec.querySelector('.add-eq').onclick=()=>{ list.appendChild(eqRow(catK)); };
+  sec.querySelector('.sector-del').onclick=()=>{ sec.remove(); calcPower(); };
+  list.appendChild(eqRow(catK));
+  $('sectors').appendChild(sec);
+  calcPower();
+}
+$('addSector').onclick=()=>{ const cp=$('catPicker'); cp.style.display=cp.style.display==='none'?'flex':'none'; };
+buildEquip();
+
+function calcPower(){
+  let totalW=0;
+  document.querySelectorAll('#sectors .sector').forEach(sec=>{
+    let sub=0;
+    sec.querySelectorAll('.eq').forEach(row=>{
+      const p=parseFloat(row.querySelector('.pw').value)||0;
+      const q=parseFloat(row.querySelector('.qt').value)||0;
+      sub+=p*q;
+    });
+    totalW+=sub;
+    const s=sec.querySelector('.sector-sub'); if(s) s.textContent=fmt(sub/1000,2)+' kW';
+  });
+  const pf=Math.min(1,Math.max(0.1,parseFloat($('pf').value)||1));
+  const kva=totalW/pf/1000;
+  let current;
+  if(phase===3) current=totalW/(Math.sqrt(3)*volt*pf);
+  else current=totalW/(volt*pf);
+
+  const brk=breakers.find(b=>b>=current*1.25) || '>250';
+  const cab=activeCables().find(c=>c[1]>=current);
+  const cableTxt=cab?`${cab[0]} mm²`:'>150 mm²';
+  highlightCable(current>0&&cab?cab[0]:null);
+
+  const S=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  let html='';
+  html+=S('Corrente', `${fmt(current,1)}<small> A</small>`,'hi full');
+  html+=S('Potência ativa total', `${fmt(totalW/1000,2)}<small> kW</small>`);
+  html+=S('Potência aparente total', `${fmt(kva,2)}<small> kVA</small>`);
+  html+=S('Disjuntor sugerido', typeof brk==='number'?`${brk}<small> A</small>`:brk,'ok');
+  html+=S('Cabo sugerido', cableTxt,'ok');
+  $('powerResults').innerHTML=html;
+
+  const sysTxt={1:'Monofásico',2:'Bifásico',3:'Trifásico'}[phase];
+  $('powerHint').innerHTML=`<b>${sysTxt} · ${volt}V · FP ${pf}</b> — Disjuntor com margem de 25%. `+
+    (phase===3?'Trifásico: I = P / (√3 × V × FP).':'I = P / (V × FP).')+
+    ` Cabo estimado por NBR 5410 (cobre, PVC, ref. B1). <b>Confirme sempre com o responsável técnico.</b>`;
+
+  lastCurrent=current; lastVolt=volt; lastPhase=phase; lastCab=cab?cab[0]:null;
+  calcVdrop();
+}
+
+/* ===== Queda de tensão ===== */
+let lastCurrent=0,lastVolt=220,lastPhase=1,lastCab=null;
+const secList=[1.5,2.5,4,6,10,16,25,35,50,70,95,120,150,185,240];
+function calcVdrop(){
+  if(!$('vdResults')) return;
+  const I=lastCurrent||0, V=lastVolt||0;
+  const L=parseFloat($('vdLen').value)||0;
+  const limit=Math.max(0.5,parseFloat($('vdLimit').value)||4);
+  const rho=parseFloat($('vdMat').value)||0.0206;       // Ω·mm²/m do condutor selecionado
+  const matTxt=$('vdMat').options[$('vdMat').selectedIndex].text;
+  const secSel=$('vdSec').value;
+  const S=secSel==='auto' ? (lastCab||0) : parseFloat(secSel)||0;
+  const k=lastPhase===3?Math.sqrt(3):2;                 // 2 = ida+volta (mono/bi)
+  const dV=(S>0&&L>0&&I>0)?k*rho*L*I/S:0;
+  const pct=V>0?dV/V*100:0;
+  const vEnd=V-dV;
+  const sMin=(I>0&&L>0&&V>0)?k*rho*L*I/(V*limit/100):0;   // bitola mínima p/ ≤ limite
+  const sRec=secList.find(x=>x>=sMin);
+  const secShown=secSel==='auto'?(lastCab?`${lastCab} mm² (auto)`:'—'):`${S} mm²`;
+
+  let cls='ok', txt='dentro do limite';
+  if(pct>limit){cls='warn';txt='acima do limite';}
+  if(pct>7){cls='danger';txt='queda alta';}
+
+  const St=(k,v,c='')=>`<div class="stat ${c}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  let h='';
+  h+=St('Queda de tensão', `${fmt(pct,2)}<small> %</small>`,'hi full '+cls);
+  h+=St('Queda', `${fmt(dV,1)}<small> V</small>`);
+  h+=St('Tensão na carga', `${fmt(vEnd,1)}<small> V</small>`);
+  h+=St('Bitola usada', secShown);
+  h+=St('Bitola mín. (≤'+fmt(limit,0)+'%)', sRec?`${sRec}<small> mm²</small>`:'>240 mm²','ok');
+  $('vdResults').innerHTML=h;
+  $('vdHint').innerHTML=(L<=0)?'Informe o comprimento do circuito (ida, do quadro/gerador até a carga).':
+    `<b>${txt.charAt(0).toUpperCase()+txt.slice(1)}</b> — limite NBR usual: 4% (circuito) a 7% (total). `+
+    `Corrente ${fmt(I,1)} A, ${lastPhase===3?'trifásico':'mono/bifásico'}, ${matTxt}.`;
+}
+
+/* ============ PROJETOR ============ */
+let projMode='dist', sizeUnit='width';
+$('segProj').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segProj').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); projMode=b.dataset.m; updateProjFields(); calcProj();
+});
+$('segSizeUnit').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segSizeUnit').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); sizeUnit=b.dataset.u; updateProjFields(); calcProj();
+});
+function updateProjFields(){
+  const sizeIsInput = projMode!=='width';
+  $('f-throw').style.display = projMode==='throw' ? 'none':'block';
+  $('f-dist').style.display  = projMode==='dist'  ? 'none':'block';
+  $('f-width').style.display = (sizeIsInput && sizeUnit==='width') ? 'block':'none';
+  $('f-diag').style.display  = (sizeIsInput && sizeUnit==='diag')  ? 'block':'none';
+}
+function calcProj(){
+  const t=parseFloat($('throw').value)||0;
+  const d=parseFloat($('dist').value)||0;
+  const aspSel=$('aspect').value;
+  let asp;
+  if(aspSel==='custom'){ const aw=parseFloat($('aspW').value)||0, ah=parseFloat($('aspH').value)||0; asp=(aw>0&&ah>0)?aw/ah:1.7778; }
+  else asp=parseFloat(aspSel)||1.7778;
+  const kW=asp/Math.sqrt(asp*asp+1);   // largura(m) = diagonal(m) × kW
+
+  // largura de entrada (m), a partir de metros ou polegadas
+  let inW;
+  if(sizeUnit==='width') inW=parseFloat($('imgW').value)||0;
+  else inW=((parseFloat($('imgDiag').value)||0)*0.0254)*kW;
+
+  let outThrow=t, outW, outDist=d;
+  if(projMode==='dist'){ outW=inW; outDist=t*outW; }
+  else if(projMode==='throw'){ outW=inW; outThrow=outW>0?d/outW:0; }
+  else { outW=t>0?d/t:0; }   // modo Tamanho: calcula a tela
+
+  const h=outW/asp;
+  const diagIn=Math.sqrt(outW*outW+h*h)/0.0254;
+  const areaProj=outW*h;
+
+  const S=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  let mainLabel, mainVal;
+  if(projMode==='dist'){mainLabel='Distância'; mainVal=`${fmt(outDist,2)}<small> m</small>`;}
+  else if(projMode==='throw'){mainLabel='Throw ratio'; mainVal=`${fmt(outThrow,2)}<small> :1</small>`;}
+  else if(sizeUnit==='diag'){mainLabel='Tamanho da tela'; mainVal=`${fmt(diagIn,0)}<small> "</small>`;}
+  else {mainLabel='Largura da imagem'; mainVal=`${fmt(outW,2)}<small> m</small>`;}
+
+  let html='';
+  html+=S(mainLabel,mainVal,'hi full');
+  html+=S('Largura', `${fmt(outW,2)}<small> m</small>`);
+  html+=S('Altura', `${fmt(h,2)}<small> m</small>`);
+  html+=S('Diagonal', `${fmt(diagIn,0)}<small> "</small>`);
+  html+=S('Área da imagem', `${fmt(areaProj,2)}<small> m²</small>`);
+  $('projResults').innerHTML=html;
+}
+['throw','imgW','imgDiag','dist','aspW','aspH'].forEach(id=>$(id).addEventListener('input',calcProj));
+$('aspect').addEventListener('change',()=>{
+  $('f-aspect-custom').style.display = $('aspect').value==='custom' ? 'block':'none';
+  calcProj();
+});
+
+/* ===== Blending (multi-projetor) ===== */
+function calcBlend(){
+  if(!$('blendResults')) return;
+  const N=Math.max(1,parseInt($('bpH').value)||1);
+  const M=Math.max(1,parseInt($('bpV').value)||1);
+  const o=Math.min(0.6,Math.max(0,(parseFloat($('bOverlap').value)||0)/100));
+  const T=parseFloat($('bWidth').value)||0;
+  const t=parseFloat($('bThrow').value)||0;
+  let pxW,pxH;
+  if($('bResPreset').value==='custom'){ pxW=parseInt($('bResW').value)||0; pxH=parseInt($('bResH').value)||0; }
+  else { const p=$('bResPreset').value.split('x'); pxW=+p[0]; pxH=+p[1]; }
+  const aspP = pxH>0 ? pxW/pxH : 1.6;
+
+  const Wp = T/(N-(N-1)*o);          // largura de cada projetor (m)
+  const Hp = Wp/aspP;                // altura de cada projetor (m)
+  const Htot = Hp*(M-(M-1)*o);       // altura total (m)
+  const blendMx = o*Wp;              // zona de blend horizontal (m)
+  const effW = Math.round(pxW*(N-(N-1)*o));  // resolução efetiva (px)
+  const effH = Math.round(pxH*(M-(M-1)*o));
+  const blendPx = Math.round(o*pxW); // zona de blend (px)
+  const dist = t*Wp;
+  const total = N*M;
+
+  const S=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  let h='';
+  h+=S('Resolução total efetiva', `${fmt(effW)}×${fmt(effH)}<small> px</small>`,'hi full');
+  h+=S('Dimensão total', `${fmt(T,2)} × ${fmt(Htot,2)}<small> m</small>`);
+  h+=S('Por projetor', `${fmt(Wp,2)} × ${fmt(Hp,2)}<small> m</small>`);
+  h+=S('Distância', `${fmt(dist,2)}<small> m</small>`);
+  h+=S('Zona de blend', `${fmt(blendMx,2)}<small> m</small>`);
+  h+=S('Blend', `${fmt(blendPx)}<small> px</small>`);
+  h+=S('Projetores', `${N}×${M} = ${total}`);
+  $('blendResults').innerHTML=h;
+}
+['bpH','bpV','bOverlap','bWidth','bResW','bResH','bThrow'].forEach(id=>$(id).addEventListener('input',calcBlend));
+$('bResPreset').addEventListener('change',()=>{
+  $('bResCustom').style.display = $('bResPreset').value==='custom' ? 'flex':'none';
+  calcBlend();
+});
+
+/* init */
+updateProjFields();
+calcPixel(); calcPower(); calcProj(); calcBlend();
+
+/* PWA service worker */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
