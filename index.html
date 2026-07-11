@@ -639,6 +639,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
 <script>
 const $ = id => document.getElementById(id);
 const fmt = (n,d=0) => isFinite(n) ? n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}) : '—';
+const fmtMm = n => fmt(n, n%1?1:0);   // bitola: vírgula só quando tem decimal (1,5 / 2,5 / 4 / 10…)
 
 /* ============ NAV (sidebar) ============ */
 document.querySelectorAll('.side-nav button').forEach(b=>{
@@ -1084,7 +1085,7 @@ function renderSectorResult(body, w, pf){
     statBox('Potência ativa',`${fmt(w/1000,2)}<small> kW</small>`)+
     statBox('Potência aparente',`${fmt(kva,2)}<small> kVA</small>`)+
     statBox('Disjuntor', brk?`${brk}<small> A</small>`:'>250 A','ok')+
-    statBox('Cabo', cab?`${cab[0]} mm²`:'>150 mm²','ok');
+    statBox('Cabo', cab?`${fmtMm(cab[0])} mm²`:'>150 mm²','ok');
 }
 function calcPower(){
   const pf=Math.min(1,Math.max(0.1,parseFloat($('pf').value)||1));
@@ -1107,7 +1108,7 @@ function calcPower(){
 
   const brk=breakers.find(b=>b>=current*1.25) || '>250';
   const cab=activeCables().find(c=>c[1]>=current);
-  const cableTxt=cab?`${cab[0]} mm²`:'>150 mm²';
+  const cableTxt=cab?`${fmtMm(cab[0])} mm²`:'>150 mm²';
   highlightCable(current>0&&cab?cab[0]:null);
 
   const S=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
@@ -1146,7 +1147,7 @@ function calcVdrop(){
   const vEnd=V-dV;
   const sMin=(I>0&&L>0&&V>0)?k*rho*L*I/(V*limit/100):0;   // bitola mínima p/ ≤ limite
   const sRec=secList.find(x=>x>=sMin);
-  const secShown=secSel==='auto'?(lastCab?`${lastCab} mm² (auto)`:'—'):`${S} mm²`;
+  const secShown=secSel==='auto'?(lastCab?`${fmtMm(lastCab)} mm² (auto)`:'—'):`${fmtMm(S)} mm²`;
 
   let cls='ok', txt='dentro do limite';
   if(pct>limit){cls='warn';txt='acima do limite';}
@@ -1158,7 +1159,7 @@ function calcVdrop(){
   h+=St('Queda', `${fmt(dV,1)}<small> V</small>`);
   h+=St('Tensão na carga', `${fmt(vEnd,1)}<small> V</small>`);
   h+=St('Bitola usada', secShown);
-  h+=St('Bitola mín. (≤'+fmt(limit,0)+'%)', sRec?`${sRec}<small> mm²</small>`:'>240 mm²','ok');
+  h+=St('Bitola mín. (≤'+fmt(limit,0)+'%)', sRec?`${fmtMm(sRec)}<small> mm²</small>`:'>240 mm²','ok');
   $('vdResults').innerHTML=h;
   $('vdHint').innerHTML=(L<=0)?'Informe o comprimento do circuito (ida, do quadro/gerador até a carga).':
     `<b>${txt.charAt(0).toUpperCase()+txt.slice(1)}</b> — limite NBR usual: 4% (circuito) a 7% (total). `+
