@@ -1026,8 +1026,8 @@ function eqRow(catK){
   function renderSug(){
     const q=nmI.value.trim().toLowerCase();
     sug.innerHTML='';
-    if(!q){ sug.style.display='none'; return; }
-    const list=(equipGroups[catK]||EQUIP).filter(e=>e.n.toLowerCase().includes(q)).slice(0,60);
+    const base=equipGroups[catK]||EQUIP;
+    const list = q ? base.filter(e=>e.n.toLowerCase().includes(q)).slice(0,80) : base.slice(0,200);
     if(!list.length){
       const d=document.createElement('div'); d.className='eq-suggest-empty';
       d.textContent='Nenhum equipamento na lista — informe a potência manualmente.';
