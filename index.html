@@ -1077,7 +1077,11 @@ buildEquip();
 const statBox=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
 function renderSectorResult(body, w, pf){
   const kva=w/pf/1000;
-  const cur = phase===3 ? w/(Math.sqrt(3)*volt*pf) : w/(volt*pf);
+  // trifásico 380: cada circuito (rack) usa F+N = 220V monofásico; demais casos, como estava
+  let cur;
+  if(phase===3 && volt===380) cur = w/(220*pf);
+  else if(phase===3) cur = w/(Math.sqrt(3)*volt*pf);
+  else cur = w/(volt*pf);
   const brk=breakers.find(b=>b>=cur*1.25);
   const cab=activeCables().find(c=>c[1]>=cur);
   body.innerHTML=
