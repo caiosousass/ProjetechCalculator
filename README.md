@@ -1,4 +1,4 @@
-# ProjeTech Calc
+# Projetech Calc
 
 PWA com calculadoras para eventos:
 
