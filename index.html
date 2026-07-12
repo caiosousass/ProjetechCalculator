@@ -193,6 +193,21 @@ details.sector-res[open] summary::before{transform:rotate(90deg)}
 .sector-summary{display:none;font-size:12px;color:var(--acc2);font-weight:700}
 .sector.collapsed .sector-summary{display:inline}
 .sector.collapsed .sector-body{display:none}
+/* Iluminação · DMX */
+.fx{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--card)}
+.fx .fx-name{width:100%;margin-bottom:8px;font-size:14px}
+.fx-row2{display:flex;gap:8px;align-items:flex-end}
+.fx-mini{flex:1;min-width:0}
+.fx-mini label{display:block;font-size:10px;color:var(--mut2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.fx-mini input{width:100%;padding:10px;font-size:15px}
+.fx .fx-del{flex:0 0 auto;width:44px;height:42px;border-radius:11px;background:var(--bg2);border:1px solid var(--line);color:var(--danger);font-size:20px;cursor:pointer}
+.list-name{flex:1;background:transparent;border:1px solid transparent;border-radius:8px;font-weight:700;font-size:15px;color:var(--txt);padding:4px 6px;min-width:0}
+.list-name:focus{border-color:var(--line);background:var(--card)}
+.dmx-fx-row{padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+.dmx-fx-row:last-child{border-bottom:0}
+.dmx-fx-nm{color:var(--txt);margin-bottom:2px}
+.dmx-fx-nm .mut{color:var(--mut2)}
+.dmx-addr{color:var(--acc2);font-size:12px;word-break:break-word;line-height:1.5}
 details.sector-vd{margin-top:10px;border-top:1px solid var(--line);padding-top:12px}
 details.sector-vd summary{cursor:pointer;list-style:none;font-size:11px;letter-spacing:.5px;color:var(--mut2);text-transform:uppercase;font-weight:700;display:flex;align-items:center;gap:7px}
 details.sector-vd summary::-webkit-details-marker{display:none}
@@ -262,6 +277,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <button data-scr="power"><svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11l-1 8.5 8.5-11.5H12z"/></svg><span>Elétrica</span></button>
       <button data-scr="proj"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="14" height="10" rx="2"/><circle cx="9" cy="12" r="2.4"/><path d="M16 10l5-2v8l-5-2"/></svg><span>Projeção</span></button>
       <button data-scr="audio"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg><span>Áudio</span></button>
+      <button data-scr="light"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg><span>Iluminação</span></button>
     </nav>
     <button class="collapse-btn" id="collapseBtn" aria-label="Recolher menu" title="Recolher / expandir">
       <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
@@ -723,6 +739,20 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <button class="btn btn-ghost btn-sm" id="addTower" style="width:100%">+ Adicionar torre</button>
       <div class="hint">Cada torre é alinhada à PA principal — informe a distância da caixa principal até ela. O offset (≈10–15 ms) faz o som "puxar" pro palco (efeito Haas).</div>
     </div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-light">
+    <div class="screen-title">Iluminação</div>
+    <p class="screen-sub">Endereçamento DMX</p>
+
+    <div id="dmxLists"></div>
+    <button class="btn btn-ghost btn-sm" id="addList" style="width:100%;margin-bottom:12px">+ Nova lista</button>
+
+    <div class="card" id="dmx-total-card">
+      <h3>Resultado geral</h3>
+      <div class="results" id="dmxTotal"></div>
+      <div class="hint">Endereços contínuos por universo de 512 canais — a Lista 2 continua de onde a Lista 1 parou. O nº de canais por aparelho é <b>provisório</b>; ajuste no campo "Canais" (editável) conforme o manual.</div>
     </div>
   </section>
     </main>
@@ -1612,6 +1642,106 @@ function calcDelay(){
 $('addTower').onclick=()=>{ $('dlTowers').appendChild(towerItem()); calcDelay(); };
 ['dlTemp','dlOffset'].forEach(id=>$(id).addEventListener('input',calcDelay));
 $('dlTowers').appendChild(towerItem());   // começa com uma torre
+
+/* ===== ILUMINAÇÃO · Endereçamento DMX ===== */
+const DMX_UNIVERSE=512;
+const LIGHTS=[
+  {n:'Moving Head Beam LED 9R 200W',            c:16},
+  {n:'Moving Head Wash LED 19×20W',             c:24},
+  {n:'Moving Head Spot BSW CMY 700W',           c:20},
+  {n:'Moving Head Profile BSW 700W',            c:24},
+  {n:'Máquina de Fumaça FOG',                   c:2},
+  {n:'Máquina de Fumaça HAZE',                  c:2},
+  {n:'Fresnel Zoom LED c/ bandoor CW/WW 400W',  c:5},
+  {n:'Fresnel LED c/ bandoor CW/WW 200W',       c:4},
+  {n:'Fresnel Zoom LED s/ bandoor CW/WW 400W',  c:5},
+  {n:'Ribalta P5 LED RGBW 44×10W',              c:8},
+  {n:'Ribalta Slim P5 LED RGBW',                c:10},
+  {n:'Ribalta LED Moving Bar Tilt 12×60W',      c:16},
+  {n:'Ribalta Strobe LED 720 LEDs',             c:4},
+  {n:'Ribalta LED 18×10W',                      c:7},
+  {n:'Refletor BL 500 RGBW',                    c:8},
+  {n:'Strobe LED RGBW 1000W',                   c:5},
+  {n:'Mini Brut LED CW/WW 2×100W',              c:4},
+  {n:'Par LED Outdoor RGBWA+UV',                c:10},
+  {n:'Par LED Indoor RGBWA',                    c:9},
+  {n:'Par LED bateria RGBWA+UV',                c:10},
+];
+let dmxListSeq=0;
+function fxRow(){
+  const div=document.createElement('div'); div.className='fx';
+  const opts=LIGHTS.map((f,i)=>`<option value="${i}">${f.n} · ${f.c} ch</option>`).join('')+`<option value="custom">Personalizado</option>`;
+  div.innerHTML=`<select class="fx-name">${opts}</select>
+    <div class="fx-row2">
+      <div class="fx-mini"><label>Canais</label><input class="fx-ch" type="number" inputmode="numeric" min="1"></div>
+      <div class="fx-mini"><label>Qtd</label><input class="fx-qty" type="number" inputmode="numeric" min="1" value="1"></div>
+      <button class="fx-del" title="Remover">×</button>
+    </div>`;
+  const nameS=div.querySelector('.fx-name'), chI=div.querySelector('.fx-ch');
+  const syncCh=()=>{ if(nameS.value!=='custom') chI.value=LIGHTS[+nameS.value].c; };
+  syncCh();
+  nameS.addEventListener('change',()=>{ syncCh(); calcDmx(); });
+  chI.addEventListener('input',calcDmx);
+  div.querySelector('.fx-qty').addEventListener('input',calcDmx);
+  div.querySelector('.fx-del').onclick=()=>{ div.remove(); calcDmx(); };
+  return div;
+}
+function dmxList(){
+  const sec=document.createElement('div'); sec.className='sector dmx-list';
+  sec.innerHTML=`<div class="sector-head">
+      <button class="sector-collapse" title="Recolher/expandir">▾</button>
+      <input class="list-name" value="Lista ${++dmxListSeq}">
+      <span class="sector-summary"></span>
+      <button class="sector-del" title="Remover lista">×</button>
+    </div>
+    <div class="sector-body">
+      <div class="fxlist"></div>
+      <button class="btn btn-ghost btn-sm add-fx" style="width:100%">+ adicionar aparelho</button>
+      <details class="sector-res" open><summary>Resultado da lista</summary><div class="results list-res-body" style="display:block"></div></details>
+    </div>`;
+  const list=sec.querySelector('.fxlist');
+  sec.querySelector('.add-fx').onclick=()=>{ list.appendChild(fxRow()); calcDmx(); };
+  sec.querySelector('.sector-del').onclick=()=>{ sec.remove(); calcDmx(); };
+  sec.querySelector('.sector-collapse').onclick=()=>sec.classList.toggle('collapsed');
+  sec.querySelector('.list-name').addEventListener('input',calcDmx);
+  list.appendChild(fxRow());
+  return sec;
+}
+function calcDmx(){
+  if(!$('dmxTotal')) return;
+  let uni=1, addr=1, totalCh=0, count=0;
+  const S=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  const pad3=n=>String(n).padStart(3,'0');
+  document.querySelectorAll('#dmxLists .dmx-list').forEach(sec=>{
+    let listCh=0, listCount=0, rows='';
+    sec.querySelectorAll('.fx').forEach(fx=>{
+      const nameS=fx.querySelector('.fx-name');
+      const nm = nameS.value==='custom' ? 'Personalizado' : LIGHTS[+nameS.value].n;
+      const ch=parseInt(fx.querySelector('.fx-ch').value)||0;
+      const qt=parseInt(fx.querySelector('.fx-qty').value)||0;
+      if(ch<=0||qt<=0) return;
+      const addrs=[]; let over=false;
+      for(let i=0;i<qt;i++){
+        if(ch>DMX_UNIVERSE){ over=true; break; }
+        if(addr+ch-1>DMX_UNIVERSE){ uni++; addr=1; }        // não cabe no universo → próximo
+        addrs.push(`U${uni}·${pad3(addr)}`);
+        addr+=ch; listCh+=ch; totalCh+=ch; listCount++; count++;
+      }
+      rows+=`<div class="dmx-fx-row"><div class="dmx-fx-nm">${nm} <span class="mut">· ${ch} ch · ×${qt}</span></div><div class="dmx-addr">${over?'⚠️ canais &gt; 512':addrs.join(',  ')}</div></div>`;
+    });
+    const body=sec.querySelector('.list-res-body'); if(body) body.innerHTML = rows || `<div class="hint" style="margin:0">Sem aparelhos.</div>`;
+    const sm=sec.querySelector('.sector-summary'); if(sm) sm.textContent=`${listCount} aparelho${listCount!==1?'s':''} · ${listCh} ch`;
+  });
+  const freeLast=DMX_UNIVERSE-(addr-1);
+  $('dmxTotal').innerHTML =
+    S('Canais usados', `${fmt(totalCh)}`,'hi full')+
+    S('Universos', `${count?uni:0}`)+
+    S('Aparelhos', `${fmt(count)}`)+
+    S('Livres (últ. universo)', `${count?fmt(freeLast):DMX_UNIVERSE}`);
+}
+$('addList').onclick=()=>{ $('dmxLists').appendChild(dmxList()); calcDmx(); };
+$('dmxLists').appendChild(dmxList());   // começa com uma lista
+calcDmx();
 
 /* init */
 updateProjFields();
