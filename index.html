@@ -1118,6 +1118,13 @@ function sizeCircuit(cur){
   const cab=activeCables().find(c=>c[1]>=(brk||cur));
   return {brk, cab};
 }
+// bitola mínima = maior entre a exigida pela CORRENTE (ampacidade) e pela QUEDA de tensão
+function bitolaMin(cur, sMin){
+  const byCur=activeCables().find(c=>c[1]>=cur);
+  const byDrop=secList.find(x=>x>=sMin);
+  const m=Math.max(byCur?byCur[0]:0, byDrop||0);
+  return m>0?m:null;
+}
 // tensão fase-neutro (F+N) a partir da tensão de linha selecionada
 const vFaseNeutro = () => volt===380?220:(volt===127?127:volt/Math.sqrt(3));
 // corrente por fase de um setor + em quais fases está (trifásico)
@@ -1160,14 +1167,14 @@ function renderSectorResult(body, w, pf, sec){
     const dV=(S>0&&L>0&&cur>0)?2*rho*L*cur/S:0;
     const pct=vCirc>0?dV/vCirc*100:0;
     const sMin=(cur>0&&L>0&&vCirc>0)?2*rho*L*cur/(vCirc*limit/100):0;
-    const sRec=secList.find(x=>x>=sMin);
+    const bMin=bitolaMin(cur,sMin);
     let cls=L>0?(pct>7?'danger':(pct>limit?'warn':'ok')):'';
     vd.innerHTML=
       statBox('Queda',`${fmt(pct,2)}<small> %</small>`,'hi full '+cls)+
       statBox('Queda',`${fmt(dV,1)}<small> V</small>`)+
       statBox('Tensão na carga',`${fmt(vCirc-dV,1)}<small> V</small>`)+
       statBox('Bitola usada',cab?`${fmtMm(cab[0])} mm²`:'—')+
-      statBox(`Bitola mín. (≤${fmt(limit,0)}%)`,sRec?`${fmtMm(sRec)}<small> mm²</small>`:'>240 mm²','ok');
+      statBox('Bitola mín. (corrente+queda)',bMin?`${fmtMm(bMin)}<small> mm²</small>`:'>240 mm²','ok');
   }
 }
 function calcPower(){
@@ -1246,7 +1253,7 @@ function calcVdrop(){
   const pct=V>0?dV/V*100:0;
   const vEnd=V-dV;
   const sMin=(I>0&&L>0&&V>0)?k*rho*L*I/(V*limit/100):0;   // bitola mínima p/ ≤ limite
-  const sRec=secList.find(x=>x>=sMin);
+  const bMin=bitolaMin(I,sMin);                            // maior entre corrente e queda
   const secShown=secSel==='auto'?(lastCab?`${fmtMm(lastCab)} mm² (auto)`:'—'):`${fmtMm(S)} mm²`;
 
   let cls='ok', txt='dentro do limite';
@@ -1259,7 +1266,7 @@ function calcVdrop(){
   h+=St('Queda', `${fmt(dV,1)}<small> V</small>`);
   h+=St('Tensão na carga', `${fmt(vEnd,1)}<small> V</small>`);
   h+=St('Bitola usada', secShown);
-  h+=St('Bitola mín. (≤'+fmt(limit,0)+'%)', sRec?`${fmtMm(sRec)}<small> mm²</small>`:'>240 mm²','ok');
+  h+=St('Bitola mín. (corrente+queda)', bMin?`${fmtMm(bMin)}<small> mm²</small>`:'>240 mm²','ok');
   $('vdResults').innerHTML=h;
   $('vdHint').innerHTML=(L<=0)?'Informe o comprimento do circuito (ida, do quadro/gerador até a carga).':
     `<b>${txt.charAt(0).toUpperCase()+txt.slice(1)}</b> — limite NBR usual: 4% (circuito) a 7% (total). `+
