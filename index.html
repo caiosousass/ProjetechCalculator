@@ -677,8 +677,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="field" style="margin-top:14px" id="splRefWrap">
         <label>Referência</label>
         <div class="seg" id="segSplRef">
-          <button data-r="peak" class="on">Pico</button>
-          <button data-r="cont">Contínuo</button>
+          <button data-r="cont" class="on">Contínuo</button>
+          <button data-r="peak">Pico</button>
         </div>
       </div>
       <div class="field" style="margin-top:14px">
@@ -1468,7 +1468,7 @@ const SPK=[
   {n:'JBL EON618S (sub)',   peak:134, cont:null, type:'sub',   g:'Subwoofer'},
   {n:'EV ELX118P (sub)',    peak:134, cont:null, type:'sub',   g:'Subwoofer'},
 ];
-let splRefMode='peak', splModel='point';
+let splRefMode='cont', splModel='point';
 (function initSpl(){
   const groups={}; SPK.forEach((s,i)=>{ (groups[s.g]=groups[s.g]||[]).push(i); });
   let html='';
@@ -1489,8 +1489,9 @@ function applySplBox(){
     $('splRefWrap').style.display='';
     // referência pico/contínuo — desabilita contínuo se não houver
     const bCont=$('segSplRef').querySelector('[data-r="cont"]');
-    if(s.cont==null){ bCont.disabled=true; bCont.style.opacity=.4; if(splRefMode==='cont') setSplRef('peak'); }
+    if(s.cont==null){ bCont.disabled=true; bCont.style.opacity=.4; }
     else { bCont.disabled=false; bCont.style.opacity=''; }
+    setSplRef(s.cont!=null ? 'cont' : 'peak');       // prefere Contínuo; cai p/ Pico só se não houver
     $('splRef').value = (splRefMode==='cont' && s.cont!=null) ? s.cont : s.peak;
     // modelo automático pela caixa (sub tratado como point)
     setSplModel(s.type==='line'?'line':'point');
@@ -1560,7 +1561,11 @@ function calcCov(){
 $('splBox').addEventListener('change',applySplBox);
 ['splRef','splDist'].forEach(id=>$(id).addEventListener('input',calcSpl));
 ['covTarget','covFront','covBack'].forEach(id=>$(id).addEventListener('input',calcCov));
-$('segSplRef').querySelectorAll('button').forEach(b=>b.onclick=()=>{ if(b.disabled)return; setSplRef(b.dataset.r); applySplBox(); });
+$('segSplRef').querySelectorAll('button').forEach(b=>b.onclick=()=>{ if(b.disabled)return; setSplRef(b.dataset.r);
+  const val=$('splBox').value;
+  if(val!=='custom'){ const s=SPK[+val]; $('splRef').value=(b.dataset.r==='cont'&&s.cont!=null)?s.cont:s.peak; }
+  calcSpl();
+});
 $('segSplModel').querySelectorAll('button').forEach(b=>b.onclick=()=>{ setSplModel(b.dataset.m); calcSpl(); });
 
 /* seletor de ferramenta de áudio (SPL · Delay) */
