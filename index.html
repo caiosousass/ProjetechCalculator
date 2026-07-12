@@ -1092,11 +1092,17 @@ function addSector(cat, dlKey){
   sec.querySelector('.sector-del').onclick=()=>{ sec.remove(); calcPower(); };
   sec.querySelector('.sector-collapse').onclick=()=>sec.classList.toggle('collapsed');
   sec.querySelector('.vd-len').addEventListener('input',calcPower);
-  // estado padrão das fases conforme a tensão: 220 = 2 fases F+F; demais = 1 fase + N (F+N)
-  if(volt===220){ sec.querySelector('.ph-f[data-p="1"]').classList.add('on'); sec.querySelector('.ph-f[data-p="2"]').classList.add('on'); }
-  else { sec.querySelector('.ph-f[data-p="1"]').classList.add('on'); sec.querySelector('.ph-n').classList.add('on'); }
+  // estado padrão das fases: 220 = 3 fases (F+F); demais = 3 fases + N (F+N)
+  ['1','2','3'].forEach(p=>sec.querySelector(`.ph-f[data-p="${p}"]`).classList.add('on'));
+  if(volt!==220) sec.querySelector('.ph-n').classList.add('on');
   sec.querySelector('.sector-phases').style.display = phase===3 ? 'flex':'none';
-  sec.querySelectorAll('.ph-btn').forEach(b=>b.onclick=()=>{ b.classList.toggle('on'); calcPower(); });
+  // trifásico exige no mínimo 2 fases OU F+N (1 fase + neutro)
+  sec.querySelectorAll('.ph-btn').forEach(b=>b.onclick=()=>{
+    b.classList.toggle('on');
+    const nF=sec.querySelectorAll('.ph-f.on').length, nOn=!!sec.querySelector('.ph-n.on');
+    if(phase===3 && !(nF>=2 || (nF>=1 && nOn))){ b.classList.toggle('on'); return; }
+    calcPower();
+  });
   list.appendChild(eqRow(catK));
   $('sectors').appendChild(sec);
   calcPower();
