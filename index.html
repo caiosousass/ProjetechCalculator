@@ -1092,15 +1092,17 @@ function sizeCircuit(cur){
   const cab=activeCables().find(c=>c[1]>=(brk||cur));
   return {brk, cab};
 }
+// tensão fase-neutro (F+N) a partir da tensão de linha selecionada
+const vFaseNeutro = () => volt===380?220:(volt===127?127:volt/Math.sqrt(3));
 // corrente por fase de um setor + em quais fases está (trifásico)
 function sectorPhaseInfo(w, pf, sec){
   let active=[1,2,3].filter(p=>sec.querySelector(`.ph-f[data-p="${p}"]`).classList.contains('on'));
   if(active.length===0) active=[1];
   const nF=active.length;
   const nOn=!!sec.querySelector('.ph-n.on');
-  const iPer = nOn ? w/(nF*(volt===380?220:(volt===127?127:volt/Math.sqrt(3)))*pf)
-                   : (nF>=3 ? w/(Math.sqrt(3)*volt*pf) : w/(volt*pf));
-  return {iPer, active};
+  const vfn=vFaseNeutro();
+  const iPer = nOn ? w/(nF*vfn*pf) : (nF>=3 ? w/(Math.sqrt(3)*volt*pf) : w/(volt*pf));
+  return {iPer, active, nOn, vCirc: nOn?vfn:volt};
 }
 function renderSectorResult(body, w, pf, sec){
   const kva=w/pf/1000;
@@ -1108,7 +1110,8 @@ function renderSectorResult(body, w, pf, sec){
   if(phase===3 && sec){
     const inf=sectorPhaseInfo(w,pf,sec);
     cur=inf.iPer;
-    label = inf.active.length>1 ? `Corrente/fase (${inf.active.map(p=>'F'+p).join('+')})` : `Corrente (F${inf.active[0]})`;
+    const phs=inf.active.map(p=>'F'+p).join('+');
+    label = `Corrente/fase ${phs} · ${inf.nOn?'F+N':'F+F'} ${fmt(inf.vCirc,0)}V`;
   } else {
     cur=w/(volt*pf);
   }
@@ -1145,7 +1148,10 @@ function calcPower(){
     const {brk,cab}=sizeCircuit(maxI);
     const deseq = maxI>0 ? (maxI-minI)/maxI*100 : 0;
     highlightCable(maxI>0&&cab?cab[0]:null);
-    let html=`<div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">`
+    let html='';
+    html+=statBox('Tensão de linha (F+F)',`${fmt(volt,0)}<small> V</small>`);
+    html+=statBox('Tensão de fase (F+N)',`${fmt(vFaseNeutro(),0)}<small> V</small>`);
+    html+=`<div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">`
       + statBox('Fase F1',`${fmt(phCur[0],1)}<small> A</small>`,'hi')
       + statBox('Fase F2',`${fmt(phCur[1],1)}<small> A</small>`,'hi')
       + statBox('Fase F3',`${fmt(phCur[2],1)}<small> A</small>`,'hi')
