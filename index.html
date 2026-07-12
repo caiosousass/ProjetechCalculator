@@ -654,8 +654,16 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
   <!-- ============ ÁUDIO ============ -->
   <section class="screen" id="scr-audio">
     <div class="screen-title">Áudio</div>
-    <p class="screen-sub">SPL na distância · delay de torres</p>
+    <p class="screen-sub">Ferramentas de áudio</p>
 
+    <div class="card">
+      <div class="seg" id="segAudio">
+        <button data-a="spl" class="on">SPL</button>
+        <button data-a="delay">Delay</button>
+      </div>
+    </div>
+
+    <div id="audioSpl">
     <div class="card">
       <h3>SPL na distância</h3>
       <div class="field">
@@ -683,7 +691,9 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="results" id="splResults" style="margin-top:14px"></div>
       <div class="hint" id="splHint"></div>
     </div>
+    </div>
 
+    <div id="audioDelay" style="display:none">
     <div class="card">
       <h3>Condições</h3>
       <div class="row">
@@ -698,6 +708,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div id="dlTowers"></div>
       <button class="btn btn-ghost btn-sm" id="addTower" style="width:100%">+ Adicionar torre</button>
       <div class="hint">Cada torre é alinhada à PA principal — informe a distância da caixa principal até ela. O offset (≈10–15 ms) faz o som "puxar" pro palco (efeito Haas).</div>
+    </div>
     </div>
   </section>
     </main>
@@ -1505,6 +1516,15 @@ $('splBox').addEventListener('change',applySplBox);
 ['splRef','splDist'].forEach(id=>$(id).addEventListener('input',calcSpl));
 $('segSplRef').querySelectorAll('button').forEach(b=>b.onclick=()=>{ if(b.disabled)return; setSplRef(b.dataset.r); applySplBox(); });
 $('segSplModel').querySelectorAll('button').forEach(b=>b.onclick=()=>{ setSplModel(b.dataset.m); calcSpl(); });
+
+/* seletor de ferramenta de áudio (SPL · Delay) */
+$('segAudio').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segAudio').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  const a=b.dataset.a;
+  $('audioSpl').style.display   = a==='spl'   ? '' : 'none';
+  $('audioDelay').style.display = a==='delay' ? '' : 'none';
+});
 
 /* ===== ÁUDIO · Delay de torres (lista) ===== */
 let towerSeq=0;
