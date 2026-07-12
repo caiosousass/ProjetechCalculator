@@ -200,6 +200,10 @@ details.sector-vd summary::before{content:'▸';color:var(--acc2);font-size:11px
 details.sector-vd[open] summary{margin-bottom:10px}
 details.sector-vd[open] summary::before{transform:rotate(90deg)}
 .vd-inputs{margin-bottom:10px}
+.tower{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--bg2)}
+.tower-head{display:flex;gap:8px;align-items:center}
+.tower-head .tw-name{flex:1;min-width:0}
+.tower-head .tw-del{flex:0 0 auto;width:40px;height:44px;border-radius:11px;background:var(--card);border:1px solid var(--line);color:var(--danger);font-size:20px;cursor:pointer}
 .cat-picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 
 .hint{font-size:12px;color:var(--mut2);margin-top:8px;line-height:1.5}
@@ -653,22 +657,19 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     <p class="screen-sub">Delay de torres · alinhamento temporal</p>
 
     <div class="card">
-      <h3>Torre de delay</h3>
-      <div class="field">
-        <label>Distância (caixa principal → torre)</label>
-        <div class="suffix"><input type="number" id="dlDist" value="" placeholder="0" step="0.1" inputmode="decimal"><span>m</span></div>
-      </div>
-      <div class="row" style="margin-top:14px">
+      <h3>Condições</h3>
+      <div class="row">
         <div class="field"><label>Temperatura</label><div class="suffix"><input type="number" id="dlTemp" value="25" step="1" inputmode="decimal"><span>°C</span></div></div>
         <div class="field"><label>Offset (Haas) <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="dlOffset" value="0" step="1" inputmode="decimal"><span>ms</span></div></div>
       </div>
-      <div class="hint">O offset (≈10–15 ms) faz o som "puxar" pro palco: a torre chega um tico depois da PA principal (efeito Haas/precedência).</div>
+      <div class="hint" id="dlHint"></div>
     </div>
 
     <div class="card">
-      <h3>Resultado</h3>
-      <div class="results" id="dlResults"></div>
-      <div class="hint" id="dlHint"></div>
+      <h3>Torres de delay</h3>
+      <div id="dlTowers"></div>
+      <button class="btn btn-ghost btn-sm" id="addTower" style="width:100%">+ Adicionar torre</button>
+      <div class="hint">Cada torre é alinhada à PA principal — informe a distância da caixa principal até ela. O offset (≈10–15 ms) faz o som "puxar" pro palco (efeito Haas).</div>
     </div>
   </section>
     </main>
@@ -1400,26 +1401,41 @@ $('bResPreset').addEventListener('change',()=>{
   calcBlend();
 });
 
-/* ===== ÁUDIO · Delay de torres ===== */
+/* ===== ÁUDIO · Delay de torres (lista) ===== */
+let towerSeq=0;
+function towerItem(){
+  const div=document.createElement('div'); div.className='tower';
+  div.innerHTML=`<div class="tower-head">
+      <input class="tw-name" placeholder="Torre" value="Torre ${++towerSeq}">
+      <div class="suffix" style="flex:0 0 120px;margin-bottom:0"><input class="tw-dist" type="number" placeholder="0" step="0.1" inputmode="decimal"><span>m</span></div>
+      <button class="tw-del" title="Remover">×</button>
+    </div>
+    <div class="results tw-out" style="margin-top:10px"></div>`;
+  div.querySelector('.tw-del').onclick=()=>{ div.remove(); calcDelay(); };
+  div.querySelector('.tw-dist').addEventListener('input',calcDelay);
+  return div;
+}
 function calcDelay(){
-  if(!$('dlResults')) return;
-  const dist=parseFloat($('dlDist').value)||0;
+  if(!$('dlTemp')) return;
   const t=parseFloat($('dlTemp').value); const T=isFinite(t)?t:20;
   const offset=parseFloat($('dlOffset').value)||0;
   const v=331.3+0.606*T;                          // velocidade do som (m/s)
-  const delayPuro=dist>0 ? dist/v*1000 : 0;        // ms só pela distância
-  const total=delayPuro+offset;
-  const samples=Math.round(total*48000/1000);      // @ 48 kHz
+  $('dlHint').innerHTML=`Velocidade do som: <b>${fmt(v,1)} m/s</b> (${fmt(T,0)}°C) · ≈ ${fmt(1000/v,2)} ms/m. Atraso = distância ÷ velocidade (+ offset).`;
   const S=(k,val,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${val}</div></div>`;
-  let h='';
-  h+=S('Atraso da torre', `${fmt(total,1)}<small> ms</small>`,'hi full');
-  h+=S('Só pela distância', `${fmt(delayPuro,1)}<small> ms</small>`);
-  h+=S('Velocidade do som', `${fmt(v,1)}<small> m/s</small>`);
-  h+=S('Samples @ 48 kHz', `${fmt(samples)}`);
-  $('dlResults').innerHTML=h;
-  $('dlHint').innerHTML=`≈ <b>${fmt(1000/v,2)} ms/m</b> a ${fmt(T,0)}°C. Atraso = distância ÷ velocidade do som (+ offset). Programe esse valor no processador/console da torre.`;
+  document.querySelectorAll('#dlTowers .tower').forEach(tw=>{
+    const dist=parseFloat(tw.querySelector('.tw-dist').value)||0;
+    const delayPuro=dist>0 ? dist/v*1000 : 0;
+    const total=delayPuro+offset;
+    const samples=Math.round(total*48000/1000);
+    tw.querySelector('.tw-out').innerHTML=
+      S('Atraso', `${fmt(total,1)}<small> ms</small>`,'hi full')+
+      S('Só distância', `${fmt(delayPuro,1)}<small> ms</small>`)+
+      S('Samples @ 48 kHz', `${fmt(samples)}`);
+  });
 }
-['dlDist','dlTemp','dlOffset'].forEach(id=>$(id).addEventListener('input',calcDelay));
+$('addTower').onclick=()=>{ $('dlTowers').appendChild(towerItem()); calcDelay(); };
+['dlTemp','dlOffset'].forEach(id=>$(id).addEventListener('input',calcDelay));
+$('dlTowers').appendChild(towerItem());   // começa com uma torre
 
 /* init */
 updateProjFields();
