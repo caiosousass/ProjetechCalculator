@@ -654,7 +654,35 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
   <!-- ============ ÁUDIO ============ -->
   <section class="screen" id="scr-audio">
     <div class="screen-title">Áudio</div>
-    <p class="screen-sub">Delay de torres · alinhamento temporal</p>
+    <p class="screen-sub">SPL na distância · delay de torres</p>
+
+    <div class="card">
+      <h3>SPL na distância</h3>
+      <div class="field">
+        <label>Caixa</label>
+        <select id="splBox"></select>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <div class="field"><label>Max SPL @1m</label><div class="suffix"><input type="number" id="splRef" step="1" inputmode="decimal"><span>dB</span></div></div>
+        <div class="field"><label>Distância</label><div class="suffix"><input type="number" id="splDist" value="20" step="1" inputmode="decimal"><span>m</span></div></div>
+      </div>
+      <div class="field" style="margin-top:14px" id="splRefWrap">
+        <label>Referência</label>
+        <div class="seg" id="segSplRef">
+          <button data-r="peak" class="on">Pico</button>
+          <button data-r="cont">Contínuo</button>
+        </div>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label>Propagação</label>
+        <div class="seg" id="segSplModel">
+          <button data-m="point">Point source · −6 dB</button>
+          <button data-m="line">Line array · −3 dB</button>
+        </div>
+      </div>
+      <div class="results" id="splResults" style="margin-top:14px"></div>
+      <div class="hint" id="splHint"></div>
+    </div>
 
     <div class="card">
       <h3>Condições</h3>
@@ -1400,6 +1428,83 @@ $('bResPreset').addEventListener('change',()=>{
   $('bResCustom').style.display = $('bResPreset').value==='custom' ? 'flex':'none';
   calcBlend();
 });
+
+/* ===== ÁUDIO · SPL na distância ===== */
+const SPK=[
+  {n:'QSC K8.2',            peak:128, cont:122,  type:'point', g:'PA · point source'},
+  {n:'QSC K12.2',           peak:132, cont:126,  type:'point', g:'PA · point source'},
+  {n:'Bose S1 Pro',         peak:106, cont:100,  type:'point', g:'PA · point source'},
+  {n:'QSC KC12 (coluna)',   peak:132, cont:null, type:'line',  g:'Line array · coluna'},
+  {n:'QSC LA112',           peak:136, cont:null, type:'line',  g:'Line array · coluna'},
+  {n:'Bose L1 Model II',    peak:121, cont:115,  type:'line',  g:'Line array · coluna'},
+  {n:'Bose L1 Compact',     peak:112, cont:106,  type:'line',  g:'Line array · coluna'},
+  {n:'QSC LS118 (sub)',     peak:138, cont:null, type:'sub',   g:'Subwoofer'},
+  {n:'QSC KS212C (sub)',    peak:132, cont:null, type:'sub',   g:'Subwoofer'},
+  {n:'JBL EON618S (sub)',   peak:134, cont:null, type:'sub',   g:'Subwoofer'},
+  {n:'EV ELX118P (sub)',    peak:134, cont:null, type:'sub',   g:'Subwoofer'},
+];
+let splRefMode='peak', splModel='point';
+(function initSpl(){
+  const groups={}; SPK.forEach((s,i)=>{ (groups[s.g]=groups[s.g]||[]).push(i); });
+  let html='';
+  for(const g in groups){
+    html+=`<optgroup label="${g}">`+groups[g].map(i=>`<option value="${i}">${SPK[i].n}</option>`).join('')+`</optgroup>`;
+  }
+  html+=`<option value="custom">Personalizado</option>`;
+  $('splBox').innerHTML=html;
+  applySplBox();               // preenche com a primeira caixa
+})();
+function applySplBox(){
+  const val=$('splBox').value;
+  if(val==='custom'){
+    $('splRefWrap').style.display='none';
+    if(!$('splRef').value) $('splRef').value=130;
+  }else{
+    const s=SPK[+val];
+    $('splRefWrap').style.display='';
+    // referência pico/contínuo — desabilita contínuo se não houver
+    const bCont=$('segSplRef').querySelector('[data-r="cont"]');
+    if(s.cont==null){ bCont.disabled=true; bCont.style.opacity=.4; if(splRefMode==='cont') setSplRef('peak'); }
+    else { bCont.disabled=false; bCont.style.opacity=''; }
+    $('splRef').value = (splRefMode==='cont' && s.cont!=null) ? s.cont : s.peak;
+    // modelo automático pela caixa (sub tratado como point)
+    setSplModel(s.type==='line'?'line':'point');
+  }
+  calcSpl();
+}
+function setSplRef(mode){
+  splRefMode=mode;
+  $('segSplRef').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.r===mode));
+}
+function setSplModel(mode){
+  splModel=mode;
+  $('segSplModel').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));
+}
+function calcSpl(){
+  if(!$('splResults')) return;
+  const ref=parseFloat($('splRef').value);
+  const dRaw=parseFloat($('splDist').value);
+  const S=(k,val,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${val}</div></div>`;
+  if(!isFinite(ref)||!isFinite(dRaw)||dRaw<=0){ $('splResults').innerHTML=S('SPL',`—`,'hi full'); $('splHint').innerHTML='Informe a caixa (ou Max SPL @1m) e a distância.'; return; }
+  const d=Math.max(dRaw,1);                                  // fórmula vale de 1 m em diante
+  const k=(splModel==='line')?10:20;                          // −3 dB/dobro (line) ou −6 dB/dobro (point)
+  const loss=k*Math.log10(d);
+  const spl=ref-loss;
+  const perDbl=(splModel==='line')?3:6;
+  $('splResults').innerHTML=
+    S(`SPL a ${fmt(dRaw,0)} m`, `${fmt(spl,0)}<small> dB</small>`,'hi full')+
+    S('Perda p/ distância', `−${fmt(loss,0)}<small> dB</small>`)+
+    S('Max SPL @1m', `${fmt(ref,0)}<small> dB</small>`);
+  const isSub = $('splBox').value!=='custom' && SPK[+$('splBox').value]?.type==='sub';
+  $('splHint').innerHTML=`${splModel==='line'?'Line array':'Point source'}: −${perDbl} dB a cada dobro de distância. `
+    + (splModel==='line'?'Modelo de campo próximo — em distâncias grandes o array volta a cair ~6 dB/dobro. ':'')
+    + (isSub?'⚠️ Para subwoofer isto é só referência (grave é quase omni e depende muito do ambiente). ':'')
+    + 'Valor teórico, ao ar livre, sem perdas de ar/ambiente.';
+}
+$('splBox').addEventListener('change',applySplBox);
+['splRef','splDist'].forEach(id=>$(id).addEventListener('input',calcSpl));
+$('segSplRef').querySelectorAll('button').forEach(b=>b.onclick=()=>{ if(b.disabled)return; setSplRef(b.dataset.r); applySplBox(); });
+$('segSplModel').querySelectorAll('button').forEach(b=>b.onclick=()=>{ setSplModel(b.dataset.m); calcSpl(); });
 
 /* ===== ÁUDIO · Delay de torres (lista) ===== */
 let towerSeq=0;
