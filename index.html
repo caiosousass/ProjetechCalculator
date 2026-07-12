@@ -469,9 +469,9 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="field">
         <label>Sistema</label>
         <div class="seg" id="segPhase">
-          <button data-p="1" class="on">Monofásico</button>
+          <button data-p="1">Monofásico</button>
           <button data-p="2">Bifásico</button>
-          <button data-p="3">Trifásico</button>
+          <button data-p="3" class="on">Trifásico</button>
         </div>
       </div>
       <div class="field">
@@ -966,7 +966,7 @@ function syncPreset(){
 ['mpxw','mpxh'].forEach(id=>$(id).addEventListener('input',syncPreset));
 
 /* ============ ELÉTRICA ============ */
-let volt=220, phase=1;
+let volt=220, phase=3;
 $('segVolt').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segVolt').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on');
