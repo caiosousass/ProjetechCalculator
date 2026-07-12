@@ -183,6 +183,11 @@ details.sector-res summary::-webkit-details-marker{display:none}
 details.sector-res summary::before{content:'▸';color:var(--acc2);font-size:11px;transition:transform .15s}
 details.sector-res[open] summary{margin-bottom:10px}
 details.sector-res[open] summary::before{transform:rotate(90deg)}
+.sector-phases{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.ph-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut2);font-weight:700;margin-right:2px}
+.ph-btn{padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:var(--bg2);color:var(--mut);font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+.ph-btn.on{background:linear-gradient(135deg,var(--acc),#5a8bff);color:#fff;border-color:transparent}
+.ph-btn.ph-n.on{background:linear-gradient(135deg,#22c55e,#16a34a)}
 .cat-picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 
 .hint{font-size:12px;color:var(--mut2);margin-top:8px;line-height:1.5}
@@ -1063,10 +1068,16 @@ function addSector(cat, dlKey){
   sec.innerHTML=`<div class="sector-head"><span class="sector-title">${cat}</span><button class="sector-del" title="Remover setor">×</button></div>
     <div class="eqlist"></div>
     <button class="btn btn-ghost btn-sm add-eq" style="width:100%">+ adicionar equipamento</button>
+    <div class="sector-phases" style="display:none"><span class="ph-lbl">Fases</span><button class="ph-btn ph-f" data-p="1">F1</button><button class="ph-btn ph-f" data-p="2">F2</button><button class="ph-btn ph-f" data-p="3">F3</button><button class="ph-btn ph-n">N</button></div>
     <details class="sector-res" open><summary>Resultado do setor</summary><div class="results sector-res-body"></div></details>`;
   const list=sec.querySelector('.eqlist');
   sec.querySelector('.add-eq').onclick=()=>{ list.appendChild(eqRow(catK)); };
   sec.querySelector('.sector-del').onclick=()=>{ sec.remove(); calcPower(); };
+  // estado padrão das fases conforme a tensão: 220 = 2 fases F+F; demais = 1 fase + N (F+N)
+  if(volt===220){ sec.querySelector('.ph-f[data-p="1"]').classList.add('on'); sec.querySelector('.ph-f[data-p="2"]').classList.add('on'); }
+  else { sec.querySelector('.ph-f[data-p="1"]').classList.add('on'); sec.querySelector('.ph-n').classList.add('on'); }
+  sec.querySelector('.sector-phases').style.display = phase===3 ? 'flex':'none';
+  sec.querySelectorAll('.ph-btn').forEach(b=>b.onclick=()=>{ b.classList.toggle('on'); calcPower(); });
   list.appendChild(eqRow(catK));
   $('sectors').appendChild(sec);
   calcPower();
@@ -1075,13 +1086,22 @@ $('addSector').onclick=()=>{ const cp=$('catPicker'); cp.style.display=cp.style.
 buildEquip();
 
 const statBox=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
-function renderSectorResult(body, w, pf){
+function renderSectorResult(body, w, pf, sec){
   const kva=w/pf/1000;
-  // trifásico 380: cada circuito (rack) usa F+N = 220V monofásico; demais casos, como estava
+  // corrente por fase conforme os toggles do setor (só no trifásico)
   let cur;
-  if(phase===3 && volt===380) cur = w/(220*pf);
-  else if(phase===3) cur = w/(Math.sqrt(3)*volt*pf);
-  else cur = w/(volt*pf);
+  if(phase===3 && sec){
+    const nF=Math.max(1, sec.querySelectorAll('.ph-f.on').length);
+    const nOn=!!sec.querySelector('.ph-n.on');
+    if(nOn){ // F+N
+      const vfn = volt===380 ? 220 : (volt===127 ? 127 : volt/Math.sqrt(3));
+      cur = w/(nF*vfn*pf);
+    } else {  // F+F
+      cur = nF>=3 ? w/(Math.sqrt(3)*volt*pf) : w/(volt*pf);
+    }
+  } else {
+    cur = w/(volt*pf);
+  }
   const brk=breakers.find(b=>b>=cur*1.25);
   const cab=activeCables().find(c=>c[1]>=cur);
   body.innerHTML=
@@ -1102,7 +1122,8 @@ function calcPower(){
       sub+=p*q;
     });
     totalW+=sub;
-    const body=sec.querySelector('.sector-res-body'); if(body) renderSectorResult(body, sub, pf);
+    const ph=sec.querySelector('.sector-phases'); if(ph) ph.style.display = phase===3 ? 'flex':'none';
+    const body=sec.querySelector('.sector-res-body'); if(body) renderSectorResult(body, sub, pf, sec);
   });
   const kva=totalW/pf/1000;
   let current;
