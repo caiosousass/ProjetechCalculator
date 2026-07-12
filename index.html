@@ -1545,13 +1545,14 @@ function calcCov(){
   if(isFinite(front)&&isFinite(back)&&front>0&&back>0){
     const sFront=splAt(front), sBack=splAt(back);
     const delta=Math.abs(k*Math.log10(Math.max(back,1)/Math.max(front,1)));
-    const uc = delta<=3?'ok':(delta<=6?'warn':'danger');
+    const dR=Math.round(delta);                      // usa o valor arredondado p/ cor bater com o nº mostrado
+    const uc = dR<=6?'ok':(dR<=10?'warn':'danger');
     const backOk = sBack>=tgt-0.5;                   // tolerância p/ não confundir na borda do alcance
     html+=S('SPL 1ª fila', `${fmt(sFront,0)}<small> dB</small>`)
         + S('SPL última fila', `${fmt(sBack,0)}<small> dB</small>`,backOk?'ok':'danger')
-        + S('Δ frente↔fundo', `${fmt(delta,0)}<small> dB</small>`,uc);
+        + S('Δ frente↔fundo', `${fmt(dR,0)}<small> dB</small>`,uc);
     hint += (backOk?'🟢 Última fila acima do alvo. ':'🔴 Última fila abaixo do alvo — reforce com delay/mais caixas. ')
-         + (delta<=3?'🟢 Cobertura muito uniforme.':delta<=6?'🟡 Uniformidade aceitável.':'🔴 Frente bem mais alta que o fundo — considere delay/line array.');
+         + (dR<=3?'✨ Cobertura excelente (nível de projeto).':dR<=6?'🟢 Cobertura muito uniforme.':dR<=10?'🟡 Uniformidade aceitável p/ caixa única.':'🔴 Frente bem mais alta que o fundo — considere delay/line array.');
   }
   $('covResults').innerHTML=html;
   $('covHint').innerHTML=hint;
