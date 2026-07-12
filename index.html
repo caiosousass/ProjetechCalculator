@@ -691,6 +691,20 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="results" id="splResults" style="margin-top:14px"></div>
       <div class="hint" id="splHint"></div>
     </div>
+
+    <div class="card">
+      <h3>Cobertura (alvo)</h3>
+      <div class="field">
+        <label>SPL alvo no público</label>
+        <div class="suffix"><input type="number" id="covTarget" value="100" step="1" inputmode="decimal"><span>dB</span></div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <div class="field"><label>Primeira fila</label><div class="suffix"><input type="number" id="covFront" value="5" step="0.5" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Última fila</label><div class="suffix"><input type="number" id="covBack" value="30" step="0.5" inputmode="decimal"><span>m</span></div></div>
+      </div>
+      <div class="results" id="covResults" style="margin-top:14px"></div>
+      <div class="hint" id="covHint"></div>
+    </div>
     </div>
 
     <div id="audioDelay" style="display:none">
@@ -1511,9 +1525,40 @@ function calcSpl(){
     + (splModel==='line'?'Modelo de campo próximo — em distâncias grandes o array volta a cair ~6 dB/dobro. ':'')
     + (isSub?'⚠️ Para subwoofer isto é só referência (grave é quase omni e depende muito do ambiente). ':'')
     + 'Valor teórico, ao ar livre, sem perdas de ar/ambiente.';
+  calcCov();                                                  // cobertura usa a mesma caixa/modelo
+}
+/* Cobertura (modo alvo): alcance + uniformidade frente↔fundo */
+function calcCov(){
+  if(!$('covResults')) return;
+  const ref=parseFloat($('splRef').value);
+  const tgt=parseFloat($('covTarget').value);
+  const front=parseFloat($('covFront').value);
+  const back=parseFloat($('covBack').value);
+  const k=(splModel==='line')?10:20;
+  const S=(kk,val,cls='')=>`<div class="stat ${cls}"><div class="k">${kk}</div><div class="v">${val}</div></div>`;
+  if(!isFinite(ref)||!isFinite(tgt)){ $('covResults').innerHTML=S('Alcance','—','hi full'); $('covHint').innerHTML='Informe a caixa e o SPL alvo.'; return; }
+  const splAt=d=>ref-k*Math.log10(Math.max(d,1));
+  const reach=Math.pow(10,(ref-tgt)/k);                        // distância onde SPL = alvo
+  const reachTxt = reach<1 ? '&lt;1' : fmt(reach,0);
+  let html=S('Alcance p/ alvo', `${reachTxt}<small> m</small>`,'hi full');
+  let hint=`Entrega ${fmt(tgt,0)} dB até ~${reachTxt} m (${splModel==='line'?'line array':'point source'}). `;
+  if(isFinite(front)&&isFinite(back)&&front>0&&back>0){
+    const sFront=splAt(front), sBack=splAt(back);
+    const delta=Math.abs(k*Math.log10(Math.max(back,1)/Math.max(front,1)));
+    const uc = delta<=3?'ok':(delta<=6?'warn':'danger');
+    const backOk = sBack>=tgt-0.5;                   // tolerância p/ não confundir na borda do alcance
+    html+=S('SPL 1ª fila', `${fmt(sFront,0)}<small> dB</small>`)
+        + S('SPL última fila', `${fmt(sBack,0)}<small> dB</small>`,backOk?'ok':'danger')
+        + S('Δ frente↔fundo', `${fmt(delta,0)}<small> dB</small>`,uc);
+    hint += (backOk?'🟢 Última fila acima do alvo. ':'🔴 Última fila abaixo do alvo — reforce com delay/mais caixas. ')
+         + (delta<=3?'🟢 Cobertura muito uniforme.':delta<=6?'🟡 Uniformidade aceitável.':'🔴 Frente bem mais alta que o fundo — considere delay/line array.');
+  }
+  $('covResults').innerHTML=html;
+  $('covHint').innerHTML=hint;
 }
 $('splBox').addEventListener('change',applySplBox);
 ['splRef','splDist'].forEach(id=>$(id).addEventListener('input',calcSpl));
+['covTarget','covFront','covBack'].forEach(id=>$(id).addEventListener('input',calcCov));
 $('segSplRef').querySelectorAll('button').forEach(b=>b.onclick=()=>{ if(b.disabled)return; setSplRef(b.dataset.r); applySplBox(); });
 $('segSplModel').querySelectorAll('button').forEach(b=>b.onclick=()=>{ setSplModel(b.dataset.m); calcSpl(); });
 
