@@ -1086,26 +1086,30 @@ $('addSector').onclick=()=>{ const cp=$('catPicker'); cp.style.display=cp.style.
 buildEquip();
 
 const statBox=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+// corrente por fase de um setor + em quais fases está (trifásico)
+function sectorPhaseInfo(w, pf, sec){
+  let active=[1,2,3].filter(p=>sec.querySelector(`.ph-f[data-p="${p}"]`).classList.contains('on'));
+  if(active.length===0) active=[1];
+  const nF=active.length;
+  const nOn=!!sec.querySelector('.ph-n.on');
+  const iPer = nOn ? w/(nF*(volt===380?220:(volt===127?127:volt/Math.sqrt(3)))*pf)
+                   : (nF>=3 ? w/(Math.sqrt(3)*volt*pf) : w/(volt*pf));
+  return {iPer, active};
+}
 function renderSectorResult(body, w, pf, sec){
   const kva=w/pf/1000;
-  // corrente por fase conforme os toggles do setor (só no trifásico)
-  let cur;
+  let cur, label='Corrente';
   if(phase===3 && sec){
-    const nF=Math.max(1, sec.querySelectorAll('.ph-f.on').length);
-    const nOn=!!sec.querySelector('.ph-n.on');
-    if(nOn){ // F+N
-      const vfn = volt===380 ? 220 : (volt===127 ? 127 : volt/Math.sqrt(3));
-      cur = w/(nF*vfn*pf);
-    } else {  // F+F
-      cur = nF>=3 ? w/(Math.sqrt(3)*volt*pf) : w/(volt*pf);
-    }
+    const inf=sectorPhaseInfo(w,pf,sec);
+    cur=inf.iPer;
+    label = inf.active.length>1 ? `Corrente/fase (${inf.active.map(p=>'F'+p).join('+')})` : `Corrente (F${inf.active[0]})`;
   } else {
-    cur = w/(volt*pf);
+    cur=w/(volt*pf);
   }
   const brk=breakers.find(b=>b>=cur*1.25);
   const cab=activeCables().find(c=>c[1]>=cur);
   body.innerHTML=
-    statBox('Corrente',`${fmt(cur,1)}<small> A</small>`,'hi full')+
+    statBox(label,`${fmt(cur,1)}<small> A</small>`,'hi full')+
     statBox('Potência ativa',`${fmt(w/1000,2)}<small> kW</small>`)+
     statBox('Potência aparente',`${fmt(kva,2)}<small> kVA</small>`)+
     statBox('Disjuntor', brk?`${brk}<small> A</small>`:'>250 A','ok')+
@@ -1114,6 +1118,7 @@ function renderSectorResult(body, w, pf, sec){
 function calcPower(){
   const pf=Math.min(1,Math.max(0.1,parseFloat($('pf').value)||1));
   let totalW=0;
+  const phCur=[0,0,0];   // corrente acumulada por fase (trifásico)
   document.querySelectorAll('#sectors .sector').forEach(sec=>{
     let sub=0;
     sec.querySelectorAll('.eq').forEach(row=>{
@@ -1122,34 +1127,48 @@ function calcPower(){
       sub+=p*q;
     });
     totalW+=sub;
-    const ph=sec.querySelector('.sector-phases'); if(ph) ph.style.display = phase===3 ? 'flex':'none';
+    const phc=sec.querySelector('.sector-phases'); if(phc) phc.style.display = phase===3 ? 'flex':'none';
     const body=sec.querySelector('.sector-res-body'); if(body) renderSectorResult(body, sub, pf, sec);
+    if(phase===3){ const {iPer,active}=sectorPhaseInfo(sub,pf,sec); active.forEach(p=>phCur[p-1]+=iPer); }
   });
   const kva=totalW/pf/1000;
-  let current;
-  if(phase===3) current=totalW/(Math.sqrt(3)*volt*pf);
-  else current=totalW/(volt*pf);
-
-  const brk=breakers.find(b=>b>=current*1.25) || '>250';
-  const cab=activeCables().find(c=>c[1]>=current);
-  const cableTxt=cab?`${fmtMm(cab[0])} mm²`:'>150 mm²';
-  highlightCable(current>0&&cab?cab[0]:null);
-
-  const S=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
-  let html='';
-  html+=S('Corrente', `${fmt(current,1)}<small> A</small>`,'hi full');
-  html+=S('Potência ativa total', `${fmt(totalW/1000,2)}<small> kW</small>`);
-  html+=S('Potência aparente total', `${fmt(kva,2)}<small> kVA</small>`);
-  html+=S('Disjuntor sugerido', typeof brk==='number'?`${brk}<small> A</small>`:brk,'ok');
-  html+=S('Cabo sugerido', cableTxt,'ok');
-  $('powerResults').innerHTML=html;
-
   const sysTxt={1:'Monofásico',2:'Bifásico',3:'Trifásico'}[phase];
-  $('powerHint').innerHTML=`<b>${sysTxt} · ${volt}V · FP ${pf}</b> — Disjuntor com margem de 25%. `+
-    (phase===3?'Trifásico: I = P / (√3 × V × FP).':'I = P / (V × FP).')+
-    ` Cabo estimado por NBR 5410 (cobre, PVC, ref. B1). <b>Confirme sempre com o responsável técnico.</b>`;
+  let usedCur, usedCab;
 
-  lastCurrent=current; lastVolt=volt; lastPhase=phase; lastCab=cab?cab[0]:null;
+  if(phase===3){
+    const maxI=Math.max(...phCur), minI=Math.min(...phCur);
+    const brk=breakers.find(b=>b>=maxI*1.25);
+    const cab=activeCables().find(c=>c[1]>=maxI);
+    const deseq = maxI>0 ? (maxI-minI)/maxI*100 : 0;
+    highlightCable(maxI>0&&cab?cab[0]:null);
+    let html=`<div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">`
+      + statBox('Fase F1',`${fmt(phCur[0],1)}<small> A</small>`,'hi')
+      + statBox('Fase F2',`${fmt(phCur[1],1)}<small> A</small>`,'hi')
+      + statBox('Fase F3',`${fmt(phCur[2],1)}<small> A</small>`,'hi')
+      + `</div>`;
+    html+=statBox('Potência ativa total',`${fmt(totalW/1000,2)}<small> kW</small>`);
+    html+=statBox('Potência aparente total',`${fmt(kva,2)}<small> kVA</small>`);
+    html+=statBox('Disjuntor (maior fase)', brk?`${brk}<small> A</small>`:'>250 A','ok');
+    html+=statBox('Cabo (maior fase)', cab?`${fmtMm(cab[0])} mm²`:'>150 mm²','ok');
+    $('powerResults').innerHTML=html;
+    $('powerHint').innerHTML=`<b>${sysTxt} · ${volt}V · FP ${pf}</b> — Corrente por fase, somada pelos toggles de cada setor. Desequilíbrio ${fmt(deseq,0)}%${deseq>15?' — ⚠ redistribua os setores entre as fases':''}. Disjuntor/cabo pela fase mais carregada (NBR 5410). <b>Confirme com o responsável técnico.</b>`;
+    usedCur=maxI; usedCab=cab?cab[0]:null;
+  } else {
+    const current=totalW/(volt*pf);
+    const brk=breakers.find(b=>b>=current*1.25)||'>250';
+    const cab=activeCables().find(c=>c[1]>=current);
+    highlightCable(current>0&&cab?cab[0]:null);
+    let html='';
+    html+=statBox('Corrente',`${fmt(current,1)}<small> A</small>`,'hi full');
+    html+=statBox('Potência ativa total',`${fmt(totalW/1000,2)}<small> kW</small>`);
+    html+=statBox('Potência aparente total',`${fmt(kva,2)}<small> kVA</small>`);
+    html+=statBox('Disjuntor sugerido', typeof brk==='number'?`${brk}<small> A</small>`:brk,'ok');
+    html+=statBox('Cabo sugerido', cab?`${fmtMm(cab[0])} mm²`:'>150 mm²','ok');
+    $('powerResults').innerHTML=html;
+    $('powerHint').innerHTML=`<b>${sysTxt} · ${volt}V · FP ${pf}</b> — Disjuntor com margem de 25%. I = P/(V×FP). Cabo por NBR 5410 (cobre, PVC, ref. B1). <b>Confirme sempre com o responsável técnico.</b>`;
+    usedCur=current; usedCab=cab?cab[0]:null;
+  }
+  lastCurrent=usedCur; lastVolt=volt; lastPhase=phase; lastCab=usedCab;
   calcVdrop();
 }
 
