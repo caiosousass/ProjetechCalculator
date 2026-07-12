@@ -1100,6 +1100,7 @@ function addSector(cat, dlKey){
   sec.querySelectorAll('.ph-btn').forEach(b=>b.onclick=()=>{
     b.classList.toggle('on');
     const nF=sec.querySelectorAll('.ph-f.on').length, nOn=!!sec.querySelector('.ph-n.on');
+    if(phase===3 && volt===380 && !nOn){ b.classList.toggle('on'); return; }   // 380: neutro obrigatório
     if(phase===3 && !(nF>=2 || (nF>=1 && nOn))){ b.classList.toggle('on'); return; }
     calcPower();
   });
@@ -1182,6 +1183,7 @@ function calcPower(){
     });
     totalW+=sub;
     const phc=sec.querySelector('.sector-phases'); if(phc) phc.style.display = phase===3 ? 'flex':'none';
+    if(phase===3 && volt===380){ const nb=sec.querySelector('.ph-n'); if(nb) nb.classList.add('on'); }  // 380: N obrigatório
     const body=sec.querySelector('.sector-res-body'); if(body) renderSectorResult(body, sub, pf, sec);
     if(phase===3){ const {iPer,active}=sectorPhaseInfo(sub,pf,sec); active.forEach(p=>phCur[p-1]+=iPer); }
   });
