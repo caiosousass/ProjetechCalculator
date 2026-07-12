@@ -658,12 +658,12 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
 
     <div class="card">
       <div class="seg" id="segAudio">
-        <button data-a="delay">Delay</button>
-        <button data-a="spl" class="on">SPL</button>
+        <button data-a="delay" class="on">Delay</button>
+        <button data-a="spl">SPL</button>
       </div>
     </div>
 
-    <div id="audioSpl">
+    <div id="audioSpl" style="display:none">
     <div class="card">
       <h3>SPL na distância</h3>
       <div class="field">
@@ -672,7 +672,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       </div>
       <div class="row" style="margin-top:14px">
         <div class="field"><label>Max SPL @1m</label><div class="suffix"><input type="number" id="splRef" step="1" inputmode="decimal"><span>dB</span></div></div>
-        <div class="field"><label>Distância</label><div class="suffix"><input type="number" id="splDist" value="20" step="1" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Distância</label><div class="suffix"><input type="number" id="splDist" value="0" step="1" inputmode="decimal"><span>m</span></div></div>
       </div>
       <div class="field" style="margin-top:14px" id="splRefWrap">
         <label>Referência</label>
@@ -699,15 +699,15 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <div class="suffix"><input type="number" id="covTarget" value="100" step="1" inputmode="decimal"><span>dB</span></div>
       </div>
       <div class="row" style="margin-top:14px">
-        <div class="field"><label>Primeira fila</label><div class="suffix"><input type="number" id="covFront" value="5" step="0.5" inputmode="decimal"><span>m</span></div></div>
-        <div class="field"><label>Última fila</label><div class="suffix"><input type="number" id="covBack" value="30" step="0.5" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Primeira fila</label><div class="suffix"><input type="number" id="covFront" value="0" step="0.5" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Última fila</label><div class="suffix"><input type="number" id="covBack" value="0" step="0.5" inputmode="decimal"><span>m</span></div></div>
       </div>
       <div class="results" id="covResults" style="margin-top:14px"></div>
       <div class="hint" id="covHint"></div>
     </div>
     </div>
 
-    <div id="audioDelay" style="display:none">
+    <div id="audioDelay">
     <div class="card">
       <h3>Condições</h3>
       <div class="row">
