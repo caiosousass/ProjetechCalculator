@@ -489,8 +489,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="hint">Monte a lista por setor. Equipamento da lista = potência automática; item personalizado = você informa a potência.</div>
     </div>
 
-    <div class="card">
-      <h3>Resultado · total geral</h3>
+    <details class="card ref-card" open>
+      <summary>Resultado · total geral</summary>
       <div class="results" id="powerResults"></div>
       <div class="hint" id="powerHint"></div>
       <details class="sector-vd">
@@ -530,7 +530,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="results" id="vdResults"></div>
       <div class="hint" id="vdHint"></div>
       </details>
-    </div>
+    </details>
 
     <details class="card ref-card">
       <summary>Tabela de referência · cabo (mm² × A)</summary>
