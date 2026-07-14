@@ -298,19 +298,14 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
 
     <div class="card">
       <h3>Módulo (gabinete)</h3>
-      <div class="row">
+      <div class="field">
+        <label>Modelo</label>
+        <select id="preset"></select>
+        <div class="hint" id="panelSpecs" style="display:none;margin-top:8px"></div>
+      </div>
+      <div class="row" style="margin-top:14px">
         <div class="field"><label>Largura</label><div class="suffix"><input type="number" id="mw" value="0.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
         <div class="field"><label>Altura</label><div class="suffix"><input type="number" id="mh" value="0.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
-      </div>
-      <div class="field" style="margin-top:14px">
-        <label>Resolução</label>
-        <select id="preset">
-          <option value="128x128">P3.9 — 128 × 128 px</option>
-          <option value="168x168">P2.9 — 168 × 168 px</option>
-          <option value="200x200">P2.5 — 200 × 200 px</option>
-          <option value="256x256">P1.9 — 256 × 256 px</option>
-          <option value="custom">Personalizado</option>
-        </select>
       </div>
       <div class="row" style="margin-top:14px">
         <div class="field"><label>Resolução H</label><div class="suffix"><input type="number" id="mpxw" value="128" inputmode="numeric"><span>px</span></div></div>
@@ -1050,30 +1045,52 @@ $('tiDownload').onclick=()=>{
   },'image/png');
 };
 
-// resolução (painéis da casa) <-> resolução customizável + auto-preenche specs do gabinete
-// avg = consumo médio (W), max = consumo máximo (W), kg = peso — por gabinete. null = ainda a definir.
-const pxPresets={
-  '128x128':{avg:null,max:null,kg:null}, // P3.9
-  '168x168':{avg:null,max:null,kg:null}, // P2.9
-  '200x200':{avg:null,max:null,kg:null}, // P2.5
-  '256x256':{avg:null,max:null,kg:null}  // P1.9
-};
-$('preset').addEventListener('change',()=>{
+// Modelos de painel da casa — specs completas (planilha "Specs paineis.xlsx")
+// w/h = módulo em m; d = profundidade mm; avg/max = consumo W/gabinete (null = a definir)
+const PANELS=[
+  {n:'Absen NT V2 P1.9',              g:'P1.9', pitch:1.9, rw:256, rh:256, w:0.5, h:0.5, d:75,  kg:6.9,  nits:1000, volt:'100–240 V', ref:7840, avg:null,  max:null},
+  {n:'Absen NT V2 P1.9 · Quina',      g:'P1.9', pitch:1.9, rw:256, rh:256, w:0.5, h:0.5, d:75,  kg:7.6,  nits:1000, volt:'100–240 V', ref:7840, avg:null,  max:null},
+  {n:'Absen Polaris Pro P2.5',        g:'P2.5', pitch:2.5, rw:200, rh:200, w:0.5, h:0.5, d:88,  kg:8,    nits:1500, volt:'100–240 V', ref:3840, avg:null,  max:null},
+  {n:'Absen NT P2.9',                 g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.3,  nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
+  {n:'Absen NT P2.9 · Flexível',      g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.2,  nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
+  {n:'Absen NT P2.9 · Quina',         g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.2,  nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
+  {n:'Absen NT P2.9 · 0,5×1 m',       g:'P2.9', pitch:2.9, rw:168, rh:336, w:0.5, h:1,   d:80,  kg:12.6, nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
+  {n:'Absen Polaris V10 P2.9',        g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:88,  kg:7.5,  nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
+  {n:'Absen Polaris V10 P2.9 · Quina',g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:88,  kg:7.6,  nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
+  {n:'LiteVision P2.9',               g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:90,  kg:7.3,  nits:1000, volt:'200–240 V', ref:3840, avg:null,  max:null},
+  {n:'Absen D3V P3.9',                g:'P3.9', pitch:3.9, rw:128, rh:128, w:0.5, h:0.5, d:100, kg:8.7,  nits:1000, volt:'200–240 V', ref:1920, avg:42.5,  max:127.5},
+];
+(function initPanels(){
+  const groups={}; PANELS.forEach((p,i)=>{ (groups[p.g]=groups[p.g]||[]).push(i); });
+  let html='';
+  for(const g in groups) html+=`<optgroup label="${g}">`+groups[g].map(i=>`<option value="${i}">${PANELS[i].n}</option>`).join('')+`</optgroup>`;
+  html+=`<option value="custom">Personalizado</option>`;
+  $('preset').innerHTML=html;
+  $('preset').value='10';           // padrão: Absen D3V P3.9 (128×128, como antes)
+})();
+function applyPanel(){
   const v=$('preset').value;
-  if(v!=='custom'){
-    const[w,h]=v.split('x'); $('mpxw').value=w; $('mpxh').value=h;
-    const p=pxPresets[v];
-    if(p.kg!=null)$('mkg').value=p.kg;
-    if(p.avg!=null)$('mavg').value=p.avg;
-    if(p.max!=null)$('mmax').value=p.max;
-  }
+  if(v==='custom'){ $('panelSpecs').style.display='none'; calcPixel(); return; }
+  const p=PANELS[+v];
+  $('mw').value=p.w; $('mh').value=p.h;
+  $('mpxw').value=p.rw; $('mpxh').value=p.rh;
+  $('mkg').value=p.kg;
+  $('mavg').value=p.avg!=null?p.avg:'';
+  $('mmax').value=p.max!=null?p.max:'';
+  $('panelSpecs').innerHTML=`Pitch <b>${fmt(p.pitch,1)} mm</b> · <b>${fmt(p.nits)}</b> nits · <b>${p.volt}</b> · Refresh <b>${fmt(p.ref)} Hz</b> · <b>${p.w*1000}×${p.h*1000}×${p.d} mm</b> (L×A×P) · Indoor`;
+  $('panelSpecs').style.display='';
   calcPixel();
-});
-function syncPreset(){
-  const key=$('mpxw').value+'x'+$('mpxh').value;
-  $('preset').value=pxPresets[key]?key:'custom';
 }
-['mpxw','mpxh'].forEach(id=>$(id).addEventListener('input',syncPreset));
+$('preset').addEventListener('change',applyPanel);
+function syncPreset(){
+  const v=$('preset').value; if(v==='custom') return;
+  const p=PANELS[+v];
+  if(+$('mpxw').value!==p.rw || +$('mpxh').value!==p.rh || +$('mw').value!==p.w || +$('mh').value!==p.h){
+    $('preset').value='custom'; $('panelSpecs').style.display='none';
+  }
+}
+['mpxw','mpxh','mw','mh'].forEach(id=>$(id).addEventListener('input',syncPreset));
+applyPanel();
 
 /* ============ ELÉTRICA ============ */
 let volt=220, phase=3;
