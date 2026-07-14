@@ -1,5 +1,5 @@
 // Projetech Calc — service worker (offline cache)
-const CACHE = 'projetech-v49';
+const CACHE = 'projetech-v50';
 const ASSETS = [
   './',
   'index.html',
@@ -12,7 +12,10 @@ const ASSETS = [
   'logo3.png',
   'logo4.png',
   'icons/icon-192.png',
-  'icons/icon-512.png'
+  'icons/icon-512.png',
+  'fonts/montserrat-300.woff2',
+  'fonts/montserrat-400.woff2',
+  'fonts/montserrat-700.woff2'
 ];
 
 self.addEventListener('install', e => {

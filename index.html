@@ -11,6 +11,9 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <title>Projetech Calculator</title>
 <style>
+@font-face{font-family:'Montserrat';font-weight:300;font-style:normal;font-display:swap;src:url('fonts/montserrat-300.woff2') format('woff2')}
+@font-face{font-family:'Montserrat';font-weight:400;font-style:normal;font-display:swap;src:url('fonts/montserrat-400.woff2') format('woff2')}
+@font-face{font-family:'Montserrat';font-weight:700;font-style:normal;font-display:swap;src:url('fonts/montserrat-700.woff2') format('woff2')}
 :root{
   --bg:#0b1020; --bg2:#121a30; --card:#161f38; --card2:#1c2745;
   --line:#26325a; --txt:#eef2ff; --mut:#93a0c7; --mut2:#6b78a3;
@@ -383,7 +386,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           </div>
         </div>
       </div>
-      <div id="tiInfoOpts" style="display:none;margin-top:12px">
+      <details id="tiInfoOpts" class="sector-res" open style="display:none;margin-top:12px"><summary>Configurar info</summary>
         <div class="field">
           <label>Título do teste <small style="color:var(--mut2)">(opc.)</small></label>
           <input type="text" id="tiTitle" placeholder="Ex.: Painel palco" autocomplete="off">
@@ -399,7 +402,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <div class="field">
           <label>Fonte da info</label>
           <select id="tiInfoFont">
-            <option value="sans-serif">Sans (padrão)</option>
+            <option value="'Montserrat', sans-serif">Montserrat (chique)</option>
+            <option value="sans-serif">Sans</option>
             <option value="Arial, sans-serif">Arial</option>
             <option value="'Segoe UI', sans-serif">Segoe UI</option>
             <option value="Verdana, sans-serif">Verdana</option>
@@ -417,6 +421,14 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
             <option value="Consolas, monospace">Consolas (mono)</option>
             <option value="'Comic Sans MS', cursive">Comic Sans</option>
           </select>
+        </div>
+        <div class="field">
+          <label>Peso da fonte</label>
+          <div class="seg" id="segInfoWeight">
+            <button data-w="300">Fina</button>
+            <button data-w="400" class="on">Regular</button>
+            <button data-w="700">Negrito</button>
+          </div>
         </div>
         <div class="field">
           <label>Alinhamento do texto</label>
@@ -443,8 +455,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           <div class="field"><label>X</label><div class="suffix"><input type="number" id="infoX" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
           <div class="field"><label>Y</label><div class="suffix"><input type="number" id="infoY" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
         </div>
-      </div>
-      <div id="tiLogoOpts" style="display:none;margin-top:12px">
+      </details>
+      <details id="tiLogoOpts" class="sector-res" open style="display:none;margin-top:12px"><summary>Configurar logo</summary>
         <div class="field">
           <label>Logo Projetech</label>
           <div class="seg" id="segLogoSrc">
@@ -478,7 +490,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           <label>Escala <span id="logoScaleVal" style="color:var(--mut2)">30%</span></label>
           <input type="range" id="logoScale" min="5" max="100" value="30" style="width:100%">
         </div>
-      </div>
+      </details>
       <div id="tiBorderOpts" style="display:none;margin-top:12px">
         <div class="row" style="align-items:flex-start">
           <div class="field" style="flex:0 0 auto">
@@ -849,7 +861,7 @@ function calcPixel(){
 let showPerson=true, personHeight=1.7;
 let pmeta={};
 let curBg='grad';
-let infoSize=0.03, infoAlign='center';
+let infoSize=0.03, infoAlign='center', infoWeight='400';
 const tiOpts={grid:true,numbers:true,circle:true,diag:true,info:false,logo:false,border:false};
 let borderPx=15;
 // logo na imagem de teste
@@ -1003,12 +1015,12 @@ function drawTest(){
     const tit=$('tiTitle').value.trim();
     const wM=cols*(+$('mw').value||0), hM=rows*(+$('mh').value||0);
     const lines=[];
-    if(tit) lines.push({t:tit, s:fs*1.5});                          // título maior
-    lines.push({t:`${W} × ${H} px`, s:fs});                         // resolução
-    lines.push({t:`${fmt(wM,2)} × ${fmt(hM,2)} m`, s:fs});          // medida em m
-    const gap=fs*0.28;
+    if(tit) lines.push({t:tit, s:fs*1.8});                          // título maior
+    lines.push({t:`${W} × ${H} px`, s:fs*0.8});                     // resolução menor
+    lines.push({t:`${fmt(wM,2)} × ${fmt(hM,2)} m`, s:fs*0.8});      // medida em m
+    const gap=fs*0.3;
     let bw=0, bh=0;
-    lines.forEach((ln,i)=>{ ctx.font=`bold ${ln.s.toFixed(0)}px ${font}`; bw=Math.max(bw,ctx.measureText(ln.t).width); bh+=ln.s*1.02+(i?gap:0); });
+    lines.forEach((ln,i)=>{ ctx.font=`${infoWeight} ${ln.s.toFixed(0)}px ${font}`; bw=Math.max(bw,ctx.measureText(ln.t).width); bh+=ln.s*1.02+(i?gap:0); });
     const m=Math.max(10,W*0.02), pos=$('infoPos').value;
     let x,y;
     if(pos==='custom'){ x=+$('infoX').value||0; y=+$('infoY').value||0; }
@@ -1021,7 +1033,7 @@ function drawTest(){
     ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=Math.max(1.5,fs*0.12); ctx.shadowOffsetY=Math.max(1,fs*0.04);
     ctx.fillStyle=$('tiInfoColor').value;
     let cy=y;
-    lines.forEach(ln=>{ ctx.font=`bold ${ln.s.toFixed(0)}px ${font}`; ctx.fillText(ln.t, ax, cy); cy+=ln.s*1.02+gap; });
+    lines.forEach(ln=>{ ctx.font=`${infoWeight} ${ln.s.toFixed(0)}px ${font}`; ctx.fillText(ln.t, ax, cy); cy+=ln.s*1.02+gap; });
     ctx.restore();
     infoRect={x,y,w:bw,h:bh};
   }
@@ -1151,6 +1163,12 @@ $('segInfoAlign').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segInfoAlign').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); infoAlign=b.dataset.a; drawTest();
 });
+$('segInfoWeight').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segInfoWeight').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); infoWeight=b.dataset.w; drawTest();
+});
+// redesenha quando a Montserrat terminar de carregar (canvas precisa da fonte pronta)
+if(document.fonts&&document.fonts.ready){ document.fonts.ready.then(()=>drawTest()); Promise.all([document.fonts.load('400 20px Montserrat'),document.fonts.load('300 20px Montserrat'),document.fonts.load('700 20px Montserrat')]).then(()=>drawTest()).catch(()=>{}); }
 $('logoFile').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
