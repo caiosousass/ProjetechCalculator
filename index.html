@@ -491,7 +491,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           <input type="range" id="logoScale" min="5" max="100" value="30" style="width:100%">
         </div>
       </details>
-      <div id="tiBorderOpts" style="display:none;margin-top:12px">
+      <details id="tiBorderOpts" class="sector-res" open style="display:none;margin-top:12px"><summary>Configurar borda</summary>
         <div class="row" style="align-items:flex-start">
           <div class="field" style="flex:0 0 auto">
             <label>Cor da borda</label>
@@ -502,7 +502,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
             <input type="range" id="borderScale" min="1" max="150" value="15" style="width:100%">
           </div>
         </div>
-      </div>
+      </details>
       <div class="ti-preview"><canvas id="tiCanvas"></canvas></div>
       <button class="btn btn-primary" id="tiDownload">⬇ Baixar PNG</button>
       <div class="hint" id="tiInfo"></div>
