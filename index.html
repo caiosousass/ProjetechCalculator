@@ -849,7 +849,7 @@ function calcPixel(){
   html+=S('Quantidade de gabinetes', `${fmt(modules)}<small> un</small>`);
   if(!isNaN(mcase)&&mcase>0) html+=S('Quantidade de cases', `${fmt(Math.ceil(modules/mcase))}<small> un</small>`);
   html+=S('Proporção', simplifyAspect(totPxW,totPxH));
-  if(!isNaN(mkg)) html+=S('Peso total', `${fmt(modules*mkg,1)}<small> kg</small>`);
+  if(!isNaN(mkg)) html+=S('Peso total (apenas gabinetes)', `${fmt(modules*mkg,1)}<small> kg</small>`);
   if(!isNaN(mavg)) html+=S('Consumo médio', `${fmt(modules*mavg/1000,2)}<small> kW</small>`);
   if(!isNaN(mmax)) html+=S('Consumo máximo', `${fmt(modules*mmax/1000,2)}<small> kW</small>`);
   $('pixelResults').innerHTML=html;
