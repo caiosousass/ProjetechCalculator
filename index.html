@@ -442,7 +442,12 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
             <option value="tr">Superior direita</option>
             <option value="tl">Superior esquerda</option>
             <option value="center">Centro</option>
+            <option value="custom">Personalizado (X/Y em px)</option>
           </select>
+        </div>
+        <div class="row" id="logoXYWrap" style="display:none;margin-top:12px">
+          <div class="field"><label>X</label><div class="suffix"><input type="number" id="logoX" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
+          <div class="field"><label>Y</label><div class="suffix"><input type="number" id="logoY" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
         </div>
         <div class="field">
           <label>Escala <span id="logoScaleVal" style="color:var(--mut2)">30%</span></label>
@@ -981,7 +986,8 @@ function drawTest(){
     if(lg && lg.complete && lg.naturalWidth){
       const lw=W*logoSizeFrac, lh=lw*(lg.naturalHeight/lg.naturalWidth), m=Math.max(10,W*0.02);
       let x,y;
-      if(logoPos==='center'){ x=(W-lw)/2; y=(H-lh)/2; }
+      if(logoPos==='custom'){ x=+$('logoX').value||0; y=+$('logoY').value||0; }
+      else if(logoPos==='center'){ x=(W-lw)/2; y=(H-lh)/2; }
       else{ x=logoPos.includes('l')?m:(W-lw-m); y=logoPos.includes('t')?m:(H-lh-m); }
       ctx.drawImage(lg,x,y,lw,lh);
     }
@@ -1025,7 +1031,12 @@ $('logoScale').addEventListener('input',()=>{
   $('logoScaleVal').textContent=$('logoScale').value+'%';
   drawTest();
 });
-$('logoPos').addEventListener('change',()=>{ logoPos=$('logoPos').value; drawTest(); });
+$('logoPos').addEventListener('change',()=>{
+  logoPos=$('logoPos').value;
+  $('logoXYWrap').style.display = logoPos==='custom' ? 'flex' : 'none';
+  drawTest();
+});
+['logoX','logoY'].forEach(id=>$(id).addEventListener('input',drawTest));
 $('logoFile').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
