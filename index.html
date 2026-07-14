@@ -1047,7 +1047,8 @@ $('tiDownload').onclick=()=>{
     if(!b) return;
     const a=document.createElement('a');
     a.href=URL.createObjectURL(b);
-    a.download=`Projetech Calculator - Pixel Map - ${pmeta.totPxW} x ${pmeta.totPxH}.png`;
+    const tit=$('tiTitle').value.trim();
+    a.download=`${tit?tit+' - ':''}${pmeta.totPxW} x ${pmeta.totPxH} - Projetech Calculator.png`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),1500);
   },'image/png');
