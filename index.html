@@ -418,6 +418,23 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
             <option value="'Comic Sans MS', cursive">Comic Sans</option>
           </select>
         </div>
+        <div class="field">
+          <label>Posição</label>
+          <select id="infoPos">
+            <option value="center">Centro</option>
+            <option value="tc">Superior centro</option>
+            <option value="bc">Inferior centro</option>
+            <option value="tl">Superior esquerda</option>
+            <option value="tr">Superior direita</option>
+            <option value="bl">Inferior esquerda</option>
+            <option value="br">Inferior direita</option>
+            <option value="custom">Personalizado (X/Y em px)</option>
+          </select>
+        </div>
+        <div class="row" id="infoXYWrap" style="display:none;margin-top:12px">
+          <div class="field"><label>X</label><div class="suffix"><input type="number" id="infoX" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
+          <div class="field"><label>Y</label><div class="suffix"><input type="number" id="infoY" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
+        </div>
       </div>
       <div id="tiLogoOpts" style="display:none;margin-top:12px">
         <div class="field">
@@ -911,7 +928,7 @@ $('segPerson').querySelectorAll('button').forEach(b=>b.onclick=()=>{
 $('personH').addEventListener('input',()=>{personHeight=parseFloat($('personH').value)||1.7;calcPixel();});
 
 // ===== Gerador de imagem de teste (PNG na resolução do painel) =====
-let logoRect=null, logoDrag=null;   // retângulo do logo desenhado (px da imagem) + estado do arrasto
+let logoRect=null, infoRect=null, dragEl=null;   // retângulos desenhados (px da imagem) + estado do arrasto
 let snapG={v:null,h:null};          // linhas-guia do snap magnético (x/y em px da imagem, null = sem snap)
 function drawTest(){
   const cv=$('tiCanvas'); if(!cv||!pmeta.totPxW) return;
@@ -970,17 +987,33 @@ function drawTest(){
       ctx.fillStyle='#000'; ctx.fillText(String(c+1),x,y);
     }
   }
-  // info (tamanho, cor e fonte configuráveis; sombra suave)
+  // info: bloco centralizado multilinha (título maior · resolução · medida em m)
+  infoRect=null;
   if(tiOpts.info){
     const fs=Math.max(12,Math.min(W,H)*infoSize);
-    ctx.font=`bold ${fs.toFixed(0)}px ${$('tiInfoFont').value}`; ctx.textAlign='left'; ctx.textBaseline='top';
-    const wM=cols*(+$('mw').value||0), hM=rows*(+$('mh').value||0);
+    const font=$('tiInfoFont').value;
     const tit=$('tiTitle').value.trim();
-    const txt=[tit, `${W}x${H}px`, `${fmt(wM,2)} × ${fmt(hM,2)} m`].filter(Boolean).join(' · ');
+    const wM=cols*(+$('mw').value||0), hM=rows*(+$('mh').value||0);
+    const lines=[];
+    if(tit) lines.push({t:tit, s:fs*1.5});                          // título maior
+    lines.push({t:`${W} × ${H} px`, s:fs});                         // resolução
+    lines.push({t:`${fmt(wM,2)} × ${fmt(hM,2)} m`, s:fs});          // medida em m
+    const gap=fs*0.28;
+    let bw=0, bh=0;
+    lines.forEach((ln,i)=>{ ctx.font=`bold ${ln.s.toFixed(0)}px ${font}`; bw=Math.max(bw,ctx.measureText(ln.t).width); bh+=ln.s*1.02+(i?gap:0); });
+    const m=Math.max(10,W*0.02), pos=$('infoPos').value;
+    let x,y;
+    if(pos==='custom'){ x=+$('infoX').value||0; y=+$('infoY').value||0; }
+    else if(pos==='center'){ x=(W-bw)/2; y=(H-bh)/2; }
+    else{ x=(pos==='tc'||pos==='bc')?(W-bw)/2:(pos.endsWith('l')?m:W-bw-m); y=pos.startsWith('t')?m:H-bh-m; }
     ctx.save();
-    ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=Math.max(1.5,fs*0.1); ctx.shadowOffsetY=Math.max(1,fs*0.03);
-    ctx.fillStyle=$('tiInfoColor').value; ctx.fillText(txt,W*0.012,H*0.012);
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=Math.max(1.5,fs*0.12); ctx.shadowOffsetY=Math.max(1,fs*0.04);
+    ctx.fillStyle=$('tiInfoColor').value;
+    let cy=y;
+    lines.forEach(ln=>{ ctx.font=`bold ${ln.s.toFixed(0)}px ${font}`; ctx.fillText(ln.t, x+bw/2, cy); cy+=ln.s*1.02+gap; });
     ctx.restore();
+    infoRect={x,y,w:bw,h:bh};
   }
   // logo
   logoRect=null;
@@ -997,7 +1030,7 @@ function drawTest(){
     }
   }
   // linhas-guia do snap (só enquanto arrasta o logo — nunca vão pro PNG baixado)
-  if(logoDrag && (snapG.v!=null || snapG.h!=null)){
+  if(dragEl && (snapG.v!=null || snapG.h!=null)){
     ctx.save();
     ctx.setLineDash([Math.max(4,W*0.012),Math.max(3,W*0.008)]);
     ctx.strokeStyle='#22d3ee'; ctx.lineWidth=Math.max(1,W*0.0025);
@@ -1023,8 +1056,9 @@ $('tiColor2').addEventListener('input',drawTest);
 $('tiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
   const k=b.dataset.opt; tiOpts[k]=!tiOpts[k]; b.classList.toggle('on',tiOpts[k]);
   if(k==='info') $('tiInfoOpts').style.display=tiOpts.info?'block':'none';
-  if(k==='logo'){ $('tiLogoOpts').style.display=tiOpts.logo?'block':'none'; $('tiCanvas').style.touchAction=tiOpts.logo?'none':''; }
+  if(k==='logo') $('tiLogoOpts').style.display=tiOpts.logo?'block':'none';
   if(k==='border') $('tiBorderOpts').style.display=tiOpts.border?'block':'none';
+  $('tiCanvas').style.touchAction=(tiOpts.logo||tiOpts.info)?'none':'';   // arrastar sem rolar a página
   drawTest();
 });
 $('borderScale').addEventListener('input',()=>{
@@ -1053,44 +1087,56 @@ $('logoPos').addEventListener('change',()=>{
 /* arrastar o logo direto no preview (mouse e touch) */
 (function(){
   const cv=$('tiCanvas');
+  // alvos arrastáveis (info em cima do logo p/ hit test); cada um sabe seu rect e seus campos
+  const TARGETS=[
+    {rect:()=>infoRect, on:()=>tiOpts.info, sel:'infoPos', wrap:'infoXYWrap', xf:'infoX', yf:'infoY'},
+    {rect:()=>logoRect, on:()=>tiOpts.logo, sel:'logoPos', wrap:'logoXYWrap', xf:'logoX', yf:'logoY'},
+  ];
   const toImg=e=>{ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)*cv.width/r.width, y:(e.clientY-r.top)*cv.height/r.height}; };
   cv.addEventListener('pointerdown',e=>{
-    if(!tiOpts.logo||!logoRect) return;
     const p=toImg(e);
-    if(p.x>=logoRect.x && p.x<=logoRect.x+logoRect.w && p.y>=logoRect.y && p.y<=logoRect.y+logoRect.h){
-      if(logoPos!=='custom'){                             // vira Personalizado mantendo a posição atual
-        logoPos='custom'; $('logoPos').value='custom'; $('logoXYWrap').style.display='flex';
-        $('logoX').value=Math.round(logoRect.x); $('logoY').value=Math.round(logoRect.y);
+    for(const t of TARGETS){
+      const R=t.rect();
+      if(!t.on()||!R) continue;
+      if(p.x>=R.x && p.x<=R.x+R.w && p.y>=R.y && p.y<=R.y+R.h){
+        if($(t.sel).value!=='custom'){                    // vira Personalizado mantendo a posição atual
+          $(t.sel).value='custom'; $(t.wrap).style.display='flex'; if(t.sel==='logoPos') logoPos='custom';
+          $(t.xf).value=Math.round(R.x); $(t.yf).value=Math.round(R.y);
+        }
+        dragEl={t, dx:p.x-R.x, dy:p.y-R.y};
+        try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+        e.preventDefault();
+        break;
       }
-      logoDrag={dx:p.x-logoRect.x, dy:p.y-logoRect.y};
-      try{ cv.setPointerCapture(e.pointerId); }catch(_){}
-      e.preventDefault();
     }
   });
   cv.addEventListener('pointermove',e=>{
-    if(!logoDrag||!logoRect) return;
+    if(!dragEl) return;
+    const R=dragEl.t.rect(); if(!R) return;
     const p=toImg(e);
-    let nx=p.x-logoDrag.dx, ny=p.y-logoDrag.dy;
+    let nx=p.x-dragEl.dx, ny=p.y-dragEl.dy;
     // snap magnético: centros e bordas (margem dos presets); zona ~12px de tela
-    const W=cv.width, H=cv.height, lw=logoRect.w, lh=logoRect.h, m=Math.max(10,W*0.02);
+    const W=cv.width, H=cv.height, ew=R.w, eh=R.h, m=Math.max(10,W*0.02);
     const r=cv.getBoundingClientRect();
     const th=r.width>0 ? 12*cv.width/r.width : 12;
     snapG={v:null,h:null};
-    const xt=[{t:m,g:m},{t:(W-lw)/2,g:W/2},{t:W-lw-m,g:W-m}];                 // esquerda · centro · direita
+    const xt=[{t:m,g:m},{t:(W-ew)/2,g:W/2},{t:W-ew-m,g:W-m}];                 // esquerda · centro · direita
     for(const s of xt){ if(Math.abs(nx-s.t)<th){ nx=s.t; snapG.v=s.g; break; } }
-    const yt=[{t:m,g:m},{t:(H-lh)/2,g:H/2},{t:H-lh-m,g:H-m}];                 // topo · centro · base
+    const yt=[{t:m,g:m},{t:(H-eh)/2,g:H/2},{t:H-eh-m,g:H-m}];                 // topo · centro · base
     for(const s of yt){ if(Math.abs(ny-s.t)<th){ ny=s.t; snapG.h=s.g; break; } }
-    $('logoX').value=Math.round(nx);
-    $('logoY').value=Math.round(ny);
+    $(dragEl.t.xf).value=Math.round(nx);
+    $(dragEl.t.yf).value=Math.round(ny);
     drawTest();
     e.preventDefault();
   });
   ['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,()=>{
-    if(!logoDrag) return;
-    logoDrag=null; snapG={v:null,h:null};
+    if(!dragEl) return;
+    dragEl=null; snapG={v:null,h:null};
     drawTest();                                            // limpa as linhas-guia do canvas
   }));
 })();
+$('infoPos').addEventListener('change',()=>{ $('infoXYWrap').style.display = $('infoPos').value==='custom'?'flex':'none'; drawTest(); });
+['infoX','infoY'].forEach(id=>$(id).addEventListener('input',drawTest));
 $('logoFile').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
