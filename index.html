@@ -384,6 +384,10 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         </div>
       </div>
       <div id="tiInfoOpts" style="display:none;margin-top:12px">
+        <div class="field">
+          <label>Título do teste <small style="color:var(--mut2)">(opc.)</small></label>
+          <input type="text" id="tiTitle" placeholder="Ex.: Painel palco" autocomplete="off">
+        </div>
         <div class="field" style="flex:0 0 auto">
           <label>Cor da info</label>
           <input type="color" id="tiInfoColor" value="#ffffff">
@@ -963,7 +967,9 @@ function drawTest(){
   if(tiOpts.info){
     const fs=Math.max(12,Math.min(W,H)*infoSize);
     ctx.font=`bold ${fs.toFixed(0)}px ${$('tiInfoFont').value}`; ctx.textAlign='left'; ctx.textBaseline='top';
-    const txt=`${W}x${H}px · ${cols}x${rows} gab · pitch ${fmt(pmeta.pitch,2)}mm`;
+    const wM=cols*(+$('mw').value||0), hM=rows*(+$('mh').value||0);
+    const tit=$('tiTitle').value.trim();
+    const txt=[tit, `${W}x${H}px`, `${fmt(wM,2)} × ${fmt(hM,2)} m`].filter(Boolean).join(' · ');
     ctx.save();
     ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=Math.max(1.5,fs*0.1); ctx.shadowOffsetY=Math.max(1,fs*0.03);
     ctx.fillStyle=$('tiInfoColor').value; ctx.fillText(txt,W*0.012,H*0.012);
@@ -1034,6 +1040,7 @@ $('infoScale').addEventListener('input',()=>{
 $('tiColor').addEventListener('input',drawTest);
 $('tiInfoColor').addEventListener('input',drawTest);
 $('tiInfoFont').addEventListener('change',drawTest);
+$('tiTitle').addEventListener('input',drawTest);
 $('tiDownload').onclick=()=>{
   const cv=$('tiCanvas'); if(!cv.width) return;
   cv.toBlob(b=>{
