@@ -315,9 +315,9 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <div class="field"><label>Peso / gabinete <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="mkg" value="" placeholder="—" inputmode="decimal"><span>kg</span></div></div>
         <div class="field"><label>Consumo médio / gabinete <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="mavg" value="" placeholder="—" inputmode="decimal"><span>W</span></div></div>
       </div>
-      <div class="field" style="margin-top:14px">
-        <label>Consumo máximo / gabinete <small style="color:var(--mut2)">(opc.)</small></label>
-        <div class="suffix"><input type="number" id="mmax" value="" placeholder="—" inputmode="decimal"><span>W</span></div>
+      <div class="row" style="margin-top:14px">
+        <div class="field"><label>Consumo máximo / gabinete <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="mmax" value="" placeholder="—" inputmode="decimal"><span>W</span></div></div>
+        <div class="field"><label>Placas por case <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="mcase" value="" placeholder="—" inputmode="numeric" min="1"><span>un</span></div></div>
       </div>
     </div>
 
@@ -782,7 +782,7 @@ function calcPixel(){
   const mw=+$('mw').value, mh=+$('mh').value;
   const pxw=+$('mpxw').value, pxh=+$('mpxh').value;
   const wallW=+$('wallw').value, wallH=+$('wallh').value;
-  const mkg=parseFloat($('mkg').value), mavg=parseFloat($('mavg').value), mmax=parseFloat($('mmax').value);
+  const mkg=parseFloat($('mkg').value), mavg=parseFloat($('mavg').value), mmax=parseFloat($('mmax').value), mcase=parseFloat($('mcase').value);
 
   const cols=mw>0?Math.round(wallW/mw):0, rows=mh>0?Math.round(wallH/mh):0;
   const modules=cols*rows;
@@ -801,6 +801,7 @@ function calcPixel(){
   html+=S('Pixels totais', `${fmt(totPx)}<small> px</small>`);
   html+=S('Pixel pitch', `${fmt(pitch,2)}<small> mm</small>`);
   html+=S('Quantidade de gabinetes', `${fmt(modules)}<small> un</small>`);
+  if(!isNaN(mcase)&&mcase>0) html+=S('Quantidade de cases', `${fmt(Math.ceil(modules/mcase))}<small> un</small>`);
   html+=S('Proporção', simplifyAspect(totPxW,totPxH));
   if(!isNaN(mkg)) html+=S('Peso total', `${fmt(modules*mkg,1)}<small> kg</small>`);
   if(!isNaN(mavg)) html+=S('Consumo médio', `${fmt(modules*mavg/1000,2)}<small> kW</small>`);
@@ -888,7 +889,7 @@ function drawScene(wM,hM){
 }
 function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a;}
 function simplifyAspect(w,h){if(!w||!h)return'—';const g=gcd(w,h);return `${w/g}:${h/g}`;}
-['mw','mh','mpxw','mpxh','wallw','wallh','mkg','mavg','mmax'].forEach(id=>$(id).addEventListener('input',calcPixel));
+['mw','mh','mpxw','mpxh','wallw','wallh','mkg','mavg','mmax','mcase'].forEach(id=>$(id).addEventListener('input',calcPixel));
 
 // pessoa de referência: mostrar/ocultar + altura editável
 $('segPerson').querySelectorAll('button').forEach(b=>b.onclick=()=>{
@@ -1048,17 +1049,17 @@ $('tiDownload').onclick=()=>{
 // Modelos de painel da casa — specs completas (planilha "Specs paineis.xlsx")
 // w/h = módulo em m; d = profundidade mm; avg/max = consumo W/gabinete (null = a definir)
 const PANELS=[
-  {n:'Absen NT V2 P1.9',              g:'P1.9', pitch:1.9, rw:256, rh:256, w:0.5, h:0.5, d:75,  kg:6.9,  nits:1000, volt:'100–240 V', ref:7840, avg:40,    max:123.8},
-  {n:'Absen NT V2 P1.9 · Quina',      g:'P1.9', pitch:1.9, rw:256, rh:256, w:0.5, h:0.5, d:75,  kg:7.6,  nits:1000, volt:'100–240 V', ref:7840, avg:40,    max:123.8},
-  {n:'Absen Polaris Pro P2.5',        g:'P2.5', pitch:2.5, rw:200, rh:200, w:0.5, h:0.5, d:88,  kg:8,    nits:1500, volt:'100–240 V', ref:3840, avg:57.5,  max:170},
-  {n:'Absen NT P2.9',                 g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.3,  nits:1000, volt:'100–240 V', ref:3840, avg:41.5,  max:124.5},
-  {n:'Absen NT P2.9 · Flexível',      g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.2,  nits:1000, volt:'100–240 V', ref:3840, avg:41.5,  max:124.5},
-  {n:'Absen NT P2.9 · Quina',         g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.2,  nits:1000, volt:'100–240 V', ref:3840, avg:41.5,  max:124.5},
-  {n:'Absen NT P2.9 · 0,5×1 m',       g:'P2.9', pitch:2.9, rw:168, rh:336, w:0.5, h:1,   d:80,  kg:12.6, nits:1000, volt:'100–240 V', ref:3840, avg:83,    max:249},
-  {n:'Absen Polaris V10 P2.9',        g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:88,  kg:7.5,  nits:1000, volt:'100–240 V', ref:3840, avg:45,    max:135},
-  {n:'Absen Polaris V10 P2.9 · Quina',g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:88,  kg:7.6,  nits:1000, volt:'100–240 V', ref:3840, avg:45,    max:135},
-  {n:'LiteVision P2.9',               g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:90,  kg:7.3,  nits:1000, volt:'200–240 V', ref:3840, avg:45,    max:135},
-  {n:'Absen D3V P3.9',                g:'P3.9', pitch:3.9, rw:128, rh:128, w:0.5, h:0.5, d:100, kg:8.7,  nits:1000, volt:'200–240 V', ref:1920, avg:42.5,  max:127.5},
+  {n:'Absen NT V2 P1.9',              g:'P1.9', pitch:1.9, rw:256, rh:256, w:0.5, h:0.5, d:75,  kg:6.9,  nits:1000, volt:'100–240 V', ref:7840, avg:40,    max:123.8, pc:8},
+  {n:'Absen NT V2 P1.9 · Quina',      g:'P1.9', pitch:1.9, rw:256, rh:256, w:0.5, h:0.5, d:75,  kg:7.6,  nits:1000, volt:'100–240 V', ref:7840, avg:40,    max:123.8, pc:8},
+  {n:'Absen Polaris Pro P2.5',        g:'P2.5', pitch:2.5, rw:200, rh:200, w:0.5, h:0.5, d:88,  kg:8,    nits:1500, volt:'100–240 V', ref:3840, avg:57.5,  max:170,   pc:6},
+  {n:'Absen NT P2.9',                 g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.3,  nits:1000, volt:'100–240 V', ref:3840, avg:41.5,  max:124.5, pc:8},
+  {n:'Absen NT P2.9 · Flexível',      g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.2,  nits:1000, volt:'100–240 V', ref:3840, avg:41.5,  max:124.5, pc:8},
+  {n:'Absen NT P2.9 · Quina',         g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.2,  nits:1000, volt:'100–240 V', ref:3840, avg:41.5,  max:124.5, pc:8},
+  {n:'Absen NT P2.9 · 0,5×1 m',       g:'P2.9', pitch:2.9, rw:168, rh:336, w:0.5, h:1,   d:80,  kg:12.6, nits:1000, volt:'100–240 V', ref:3840, avg:83,    max:249,   pc:4},
+  {n:'Absen Polaris V10 P2.9',        g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:88,  kg:7.5,  nits:1000, volt:'100–240 V', ref:3840, avg:45,    max:135,   pc:6},
+  {n:'Absen Polaris V10 P2.9 · Quina',g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:88,  kg:7.6,  nits:1000, volt:'100–240 V', ref:3840, avg:45,    max:135,   pc:6},
+  {n:'LiteVision P2.9',               g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:90,  kg:7.3,  nits:1000, volt:'200–240 V', ref:3840, avg:45,    max:135,   pc:6},
+  {n:'Absen D3V P3.9',                g:'P3.9', pitch:3.9, rw:128, rh:128, w:0.5, h:0.5, d:100, kg:8.7,  nits:1000, volt:'200–240 V', ref:1920, avg:42.5,  max:127.5, pc:6},
 ];
 (function initPanels(){
   const groups={}; PANELS.forEach((p,i)=>{ (groups[p.g]=groups[p.g]||[]).push(i); });
@@ -1077,6 +1078,7 @@ function applyPanel(){
   $('mkg').value=p.kg;
   $('mavg').value=p.avg!=null?p.avg:'';
   $('mmax').value=p.max!=null?p.max:'';
+  $('mcase').value=p.pc!=null?p.pc:'';
   $('panelSpecs').innerHTML=`Pitch <b>${fmt(p.pitch,1)} mm</b> · <b>${fmt(p.nits)}</b> nits · <b>${p.volt}</b> · Refresh <b>${fmt(p.ref)} Hz</b> · <b>${p.w*1000}×${p.h*1000}×${p.d} mm</b> (L×A×P) · Indoor`;
   $('panelSpecs').style.display='';
   calcPixel();
