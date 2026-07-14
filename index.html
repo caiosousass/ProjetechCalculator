@@ -1048,16 +1048,16 @@ $('tiDownload').onclick=()=>{
 // Modelos de painel da casa — specs completas (planilha "Specs paineis.xlsx")
 // w/h = módulo em m; d = profundidade mm; avg/max = consumo W/gabinete (null = a definir)
 const PANELS=[
-  {n:'Absen NT V2 P1.9',              g:'P1.9', pitch:1.9, rw:256, rh:256, w:0.5, h:0.5, d:75,  kg:6.9,  nits:1000, volt:'100–240 V', ref:7840, avg:null,  max:null},
-  {n:'Absen NT V2 P1.9 · Quina',      g:'P1.9', pitch:1.9, rw:256, rh:256, w:0.5, h:0.5, d:75,  kg:7.6,  nits:1000, volt:'100–240 V', ref:7840, avg:null,  max:null},
-  {n:'Absen Polaris Pro P2.5',        g:'P2.5', pitch:2.5, rw:200, rh:200, w:0.5, h:0.5, d:88,  kg:8,    nits:1500, volt:'100–240 V', ref:3840, avg:null,  max:null},
-  {n:'Absen NT P2.9',                 g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.3,  nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
-  {n:'Absen NT P2.9 · Flexível',      g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.2,  nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
-  {n:'Absen NT P2.9 · Quina',         g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.2,  nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
-  {n:'Absen NT P2.9 · 0,5×1 m',       g:'P2.9', pitch:2.9, rw:168, rh:336, w:0.5, h:1,   d:80,  kg:12.6, nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
-  {n:'Absen Polaris V10 P2.9',        g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:88,  kg:7.5,  nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
-  {n:'Absen Polaris V10 P2.9 · Quina',g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:88,  kg:7.6,  nits:1000, volt:'100–240 V', ref:3840, avg:null,  max:null},
-  {n:'LiteVision P2.9',               g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:90,  kg:7.3,  nits:1000, volt:'200–240 V', ref:3840, avg:null,  max:null},
+  {n:'Absen NT V2 P1.9',              g:'P1.9', pitch:1.9, rw:256, rh:256, w:0.5, h:0.5, d:75,  kg:6.9,  nits:1000, volt:'100–240 V', ref:7840, avg:40,    max:123.8},
+  {n:'Absen NT V2 P1.9 · Quina',      g:'P1.9', pitch:1.9, rw:256, rh:256, w:0.5, h:0.5, d:75,  kg:7.6,  nits:1000, volt:'100–240 V', ref:7840, avg:40,    max:123.8},
+  {n:'Absen Polaris Pro P2.5',        g:'P2.5', pitch:2.5, rw:200, rh:200, w:0.5, h:0.5, d:88,  kg:8,    nits:1500, volt:'100–240 V', ref:3840, avg:57.5,  max:170},
+  {n:'Absen NT P2.9',                 g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.3,  nits:1000, volt:'100–240 V', ref:3840, avg:41.5,  max:124.5},
+  {n:'Absen NT P2.9 · Flexível',      g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.2,  nits:1000, volt:'100–240 V', ref:3840, avg:41.5,  max:124.5},
+  {n:'Absen NT P2.9 · Quina',         g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:80,  kg:7.2,  nits:1000, volt:'100–240 V', ref:3840, avg:41.5,  max:124.5},
+  {n:'Absen NT P2.9 · 0,5×1 m',       g:'P2.9', pitch:2.9, rw:168, rh:336, w:0.5, h:1,   d:80,  kg:12.6, nits:1000, volt:'100–240 V', ref:3840, avg:83,    max:249},
+  {n:'Absen Polaris V10 P2.9',        g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:88,  kg:7.5,  nits:1000, volt:'100–240 V', ref:3840, avg:45,    max:135},
+  {n:'Absen Polaris V10 P2.9 · Quina',g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:88,  kg:7.6,  nits:1000, volt:'100–240 V', ref:3840, avg:45,    max:135},
+  {n:'LiteVision P2.9',               g:'P2.9', pitch:2.9, rw:168, rh:168, w:0.5, h:0.5, d:90,  kg:7.3,  nits:1000, volt:'200–240 V', ref:3840, avg:45,    max:135},
   {n:'Absen D3V P3.9',                g:'P3.9', pitch:3.9, rw:128, rh:128, w:0.5, h:0.5, d:100, kg:8.7,  nits:1000, volt:'200–240 V', ref:1920, avg:42.5,  max:127.5},
 ];
 (function initPanels(){
