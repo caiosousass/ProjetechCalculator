@@ -911,6 +911,7 @@ $('segPerson').querySelectorAll('button').forEach(b=>b.onclick=()=>{
 $('personH').addEventListener('input',()=>{personHeight=parseFloat($('personH').value)||1.7;calcPixel();});
 
 // ===== Gerador de imagem de teste (PNG na resolução do painel) =====
+let logoRect=null, logoDrag=null;   // retângulo do logo desenhado (px da imagem) + estado do arrasto
 function drawTest(){
   const cv=$('tiCanvas'); if(!cv||!pmeta.totPxW) return;
   const {totPxW:W,totPxH:H,cols,rows,pxw,pxh}=pmeta;
@@ -981,6 +982,7 @@ function drawTest(){
     ctx.restore();
   }
   // logo
+  logoRect=null;
   if(tiOpts.logo){
     const lg=activeLogo();
     if(lg && lg.complete && lg.naturalWidth){
@@ -990,6 +992,7 @@ function drawTest(){
       else if(logoPos==='center'){ x=(W-lw)/2; y=(H-lh)/2; }
       else{ x=logoPos.includes('l')?m:(W-lw-m); y=logoPos.includes('t')?m:(H-lh-m); }
       ctx.drawImage(lg,x,y,lw,lh);
+      logoRect={x,y,w:lw,h:lh};
     }
   }
   // borda da imagem
@@ -1010,7 +1013,7 @@ $('tiColor2').addEventListener('input',drawTest);
 $('tiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
   const k=b.dataset.opt; tiOpts[k]=!tiOpts[k]; b.classList.toggle('on',tiOpts[k]);
   if(k==='info') $('tiInfoOpts').style.display=tiOpts.info?'block':'none';
-  if(k==='logo') $('tiLogoOpts').style.display=tiOpts.logo?'block':'none';
+  if(k==='logo'){ $('tiLogoOpts').style.display=tiOpts.logo?'block':'none'; $('tiCanvas').style.touchAction=tiOpts.logo?'none':''; }
   if(k==='border') $('tiBorderOpts').style.display=tiOpts.border?'block':'none';
   drawTest();
 });
@@ -1037,6 +1040,33 @@ $('logoPos').addEventListener('change',()=>{
   drawTest();
 });
 ['logoX','logoY'].forEach(id=>$(id).addEventListener('input',drawTest));
+/* arrastar o logo direto no preview (mouse e touch) */
+(function(){
+  const cv=$('tiCanvas');
+  const toImg=e=>{ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)*cv.width/r.width, y:(e.clientY-r.top)*cv.height/r.height}; };
+  cv.addEventListener('pointerdown',e=>{
+    if(!tiOpts.logo||!logoRect) return;
+    const p=toImg(e);
+    if(p.x>=logoRect.x && p.x<=logoRect.x+logoRect.w && p.y>=logoRect.y && p.y<=logoRect.y+logoRect.h){
+      if(logoPos!=='custom'){                             // vira Personalizado mantendo a posição atual
+        logoPos='custom'; $('logoPos').value='custom'; $('logoXYWrap').style.display='flex';
+        $('logoX').value=Math.round(logoRect.x); $('logoY').value=Math.round(logoRect.y);
+      }
+      logoDrag={dx:p.x-logoRect.x, dy:p.y-logoRect.y};
+      try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+      e.preventDefault();
+    }
+  });
+  cv.addEventListener('pointermove',e=>{
+    if(!logoDrag) return;
+    const p=toImg(e);
+    $('logoX').value=Math.round(p.x-logoDrag.dx);
+    $('logoY').value=Math.round(p.y-logoDrag.dy);
+    drawTest();
+    e.preventDefault();
+  });
+  ['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,()=>{ logoDrag=null; }));
+})();
 $('logoFile').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
