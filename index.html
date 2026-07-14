@@ -419,6 +419,14 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           </select>
         </div>
         <div class="field">
+          <label>Alinhamento do texto</label>
+          <div class="seg" id="segInfoAlign">
+            <button data-a="left" title="Esquerda"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="14" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg></button>
+            <button data-a="center" class="on" title="Centro"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="5" y1="18" x2="19" y2="18"/></svg></button>
+            <button data-a="right" title="Direita"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div class="field">
           <label>Posição</label>
           <select id="infoPos">
             <option value="center">Centro</option>
@@ -841,7 +849,7 @@ function calcPixel(){
 let showPerson=true, personHeight=1.7;
 let pmeta={};
 let curBg='grad';
-let infoSize=0.03;
+let infoSize=0.03, infoAlign='center';
 const tiOpts={grid:true,numbers:true,circle:true,diag:true,info:false,logo:false,border:false};
 let borderPx=15;
 // logo na imagem de teste
@@ -1006,12 +1014,14 @@ function drawTest(){
     if(pos==='custom'){ x=+$('infoX').value||0; y=+$('infoY').value||0; }
     else if(pos==='center'){ x=(W-bw)/2; y=(H-bh)/2; }
     else{ x=(pos==='tc'||pos==='bc')?(W-bw)/2:(pos.endsWith('l')?m:W-bw-m); y=pos.startsWith('t')?m:H-bh-m; }
+    const al=infoAlign;                                    // esquerda · centro · direita (dentro do bloco)
+    const ax = al==='left'?x : al==='right'?x+bw : x+bw/2;
     ctx.save();
-    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.textAlign=al; ctx.textBaseline='top';
     ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=Math.max(1.5,fs*0.12); ctx.shadowOffsetY=Math.max(1,fs*0.04);
     ctx.fillStyle=$('tiInfoColor').value;
     let cy=y;
-    lines.forEach(ln=>{ ctx.font=`bold ${ln.s.toFixed(0)}px ${font}`; ctx.fillText(ln.t, x+bw/2, cy); cy+=ln.s*1.02+gap; });
+    lines.forEach(ln=>{ ctx.font=`bold ${ln.s.toFixed(0)}px ${font}`; ctx.fillText(ln.t, ax, cy); cy+=ln.s*1.02+gap; });
     ctx.restore();
     infoRect={x,y,w:bw,h:bh};
   }
@@ -1137,6 +1147,10 @@ $('logoPos').addEventListener('change',()=>{
 })();
 $('infoPos').addEventListener('change',()=>{ $('infoXYWrap').style.display = $('infoPos').value==='custom'?'flex':'none'; drawTest(); });
 ['infoX','infoY'].forEach(id=>$(id).addEventListener('input',drawTest));
+$('segInfoAlign').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segInfoAlign').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); infoAlign=b.dataset.a; drawTest();
+});
 $('logoFile').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
