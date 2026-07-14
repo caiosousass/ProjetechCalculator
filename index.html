@@ -912,6 +912,7 @@ $('personH').addEventListener('input',()=>{personHeight=parseFloat($('personH').
 
 // ===== Gerador de imagem de teste (PNG na resolução do painel) =====
 let logoRect=null, logoDrag=null;   // retângulo do logo desenhado (px da imagem) + estado do arrasto
+let snapG={v:null,h:null};          // linhas-guia do snap magnético (x/y em px da imagem, null = sem snap)
 function drawTest(){
   const cv=$('tiCanvas'); if(!cv||!pmeta.totPxW) return;
   const {totPxW:W,totPxH:H,cols,rows,pxw,pxh}=pmeta;
@@ -995,6 +996,15 @@ function drawTest(){
       logoRect={x,y,w:lw,h:lh};
     }
   }
+  // linhas-guia do snap (só enquanto arrasta o logo — nunca vão pro PNG baixado)
+  if(logoDrag && (snapG.v!=null || snapG.h!=null)){
+    ctx.save();
+    ctx.setLineDash([Math.max(4,W*0.012),Math.max(3,W*0.008)]);
+    ctx.strokeStyle='#22d3ee'; ctx.lineWidth=Math.max(1,W*0.0025);
+    if(snapG.v!=null){ ctx.beginPath(); ctx.moveTo(snapG.v,0); ctx.lineTo(snapG.v,H); ctx.stroke(); }
+    if(snapG.h!=null){ ctx.beginPath(); ctx.moveTo(0,snapG.h); ctx.lineTo(W,snapG.h); ctx.stroke(); }
+    ctx.restore();
+  }
   // borda da imagem
   if(tiOpts.border){
     const bw=Math.max(1,borderPx);
@@ -1058,14 +1068,28 @@ $('logoPos').addEventListener('change',()=>{
     }
   });
   cv.addEventListener('pointermove',e=>{
-    if(!logoDrag) return;
+    if(!logoDrag||!logoRect) return;
     const p=toImg(e);
-    $('logoX').value=Math.round(p.x-logoDrag.dx);
-    $('logoY').value=Math.round(p.y-logoDrag.dy);
+    let nx=p.x-logoDrag.dx, ny=p.y-logoDrag.dy;
+    // snap magnético: centros e bordas (margem dos presets); zona ~12px de tela
+    const W=cv.width, H=cv.height, lw=logoRect.w, lh=logoRect.h, m=Math.max(10,W*0.02);
+    const r=cv.getBoundingClientRect();
+    const th=r.width>0 ? 12*cv.width/r.width : 12;
+    snapG={v:null,h:null};
+    const xt=[{t:m,g:m},{t:(W-lw)/2,g:W/2},{t:W-lw-m,g:W-m}];                 // esquerda · centro · direita
+    for(const s of xt){ if(Math.abs(nx-s.t)<th){ nx=s.t; snapG.v=s.g; break; } }
+    const yt=[{t:m,g:m},{t:(H-lh)/2,g:H/2},{t:H-lh-m,g:H-m}];                 // topo · centro · base
+    for(const s of yt){ if(Math.abs(ny-s.t)<th){ ny=s.t; snapG.h=s.g; break; } }
+    $('logoX').value=Math.round(nx);
+    $('logoY').value=Math.round(ny);
     drawTest();
     e.preventDefault();
   });
-  ['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,()=>{ logoDrag=null; }));
+  ['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,()=>{
+    if(!logoDrag) return;
+    logoDrag=null; snapG={v:null,h:null};
+    drawTest();                                            // limpa as linhas-guia do canvas
+  }));
 })();
 $('logoFile').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
