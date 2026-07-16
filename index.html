@@ -307,28 +307,28 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <div class="hint" id="panelSpecs" style="display:none;margin-top:8px"></div>
       </div>
       <div class="row" style="margin-top:14px">
-        <div class="field"><label>Largura</label><div class="suffix"><input type="number" id="mw" value="0.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
-        <div class="field"><label>Altura</label><div class="suffix"><input type="number" id="mh" value="0.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Largura</label><div class="suffix"><input type="text" id="mw" value="0.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Altura</label><div class="suffix"><input type="text" id="mh" value="0.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
       </div>
       <div class="row" style="margin-top:14px">
-        <div class="field"><label>Resolução H</label><div class="suffix"><input type="number" id="mpxw" value="128" inputmode="numeric"><span>px</span></div></div>
-        <div class="field"><label>Resolução V</label><div class="suffix"><input type="number" id="mpxh" value="128" inputmode="numeric"><span>px</span></div></div>
+        <div class="field"><label>Resolução H</label><div class="suffix"><input type="text" id="mpxw" value="128" inputmode="numeric"><span>px</span></div></div>
+        <div class="field"><label>Resolução V</label><div class="suffix"><input type="text" id="mpxh" value="128" inputmode="numeric"><span>px</span></div></div>
       </div>
       <div class="row" style="margin-top:14px">
-        <div class="field"><label>Peso / gabinete <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="mkg" value="" placeholder="—" inputmode="decimal"><span>kg</span></div></div>
-        <div class="field"><label>Consumo médio / gabinete <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="mavg" value="" placeholder="—" inputmode="decimal"><span>W</span></div></div>
+        <div class="field"><label>Peso / gabinete <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="text" id="mkg" value="" placeholder="—" inputmode="decimal"><span>kg</span></div></div>
+        <div class="field"><label>Consumo médio / gabinete <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="text" id="mavg" value="" placeholder="—" inputmode="decimal"><span>W</span></div></div>
       </div>
       <div class="row" style="margin-top:14px">
-        <div class="field"><label>Consumo máximo / gabinete <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="mmax" value="" placeholder="—" inputmode="decimal"><span>W</span></div></div>
-        <div class="field"><label>Placas por case <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="mcase" value="" placeholder="—" inputmode="numeric" min="1"><span>un</span></div></div>
+        <div class="field"><label>Consumo máximo / gabinete <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="text" id="mmax" value="" placeholder="—" inputmode="decimal"><span>W</span></div></div>
+        <div class="field"><label>Placas por case <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="text" id="mcase" value="" placeholder="—" inputmode="numeric" min="1"><span>un</span></div></div>
       </div>
     </div>
 
     <div class="card">
       <h3>Dimensão</h3>
       <div class="row">
-        <div class="field"><label>Largura</label><div class="suffix"><input type="number" id="wallw" value="3" step="0.01" inputmode="decimal"><span>m</span></div></div>
-        <div class="field"><label>Altura</label><div class="suffix"><input type="number" id="wallh" value="1.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Largura</label><div class="suffix"><input type="text" id="wallw" value="3" step="0.01" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Altura</label><div class="suffix"><input type="text" id="wallh" value="1.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
       </div>
       <div class="hint">A quantidade de gabinetes é calculada pela dimensão ÷ tamanho do módulo (gabinetes inteiros).</div>
     </div>
@@ -347,7 +347,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         </div>
         <div class="field" id="personHField">
           <label>Altura da pessoa</label>
-          <div class="suffix"><input type="number" id="personH" value="1.70" step="0.05" min="0.5" inputmode="decimal"><span>m</span></div>
+          <div class="suffix"><input type="text" id="personH" value="1.70" step="0.05" min="0.5" inputmode="decimal"><span>m</span></div>
         </div>
       </div>
       <div class="aspect-vis"><svg id="aspectSvg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Painel com pessoa de referência"></svg></div>
@@ -452,8 +452,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           </select>
         </div>
         <div class="row" id="infoXYWrap" style="display:none;margin-top:12px">
-          <div class="field"><label>X</label><div class="suffix"><input type="number" id="infoX" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
-          <div class="field"><label>Y</label><div class="suffix"><input type="number" id="infoY" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
+          <div class="field"><label>X</label><div class="suffix"><input type="text" id="infoX" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
+          <div class="field"><label>Y</label><div class="suffix"><input type="text" id="infoY" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
         </div>
       </details>
       <details id="tiLogoOpts" class="sector-res" open style="display:none;margin-top:12px"><summary>Configurar logo</summary>
@@ -483,8 +483,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           </select>
         </div>
         <div class="row" id="logoXYWrap" style="display:none;margin-top:12px">
-          <div class="field"><label>X</label><div class="suffix"><input type="number" id="logoX" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
-          <div class="field"><label>Y</label><div class="suffix"><input type="number" id="logoY" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
+          <div class="field"><label>X</label><div class="suffix"><input type="text" id="logoX" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
+          <div class="field"><label>Y</label><div class="suffix"><input type="text" id="logoY" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
         </div>
         <div class="field">
           <label>Escala <span id="logoScaleVal" style="color:var(--mut2)">30%</span></label>
@@ -525,7 +525,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           <button data-v="custom">Outra</button>
         </div>
         <div class="suffix" id="customVoltWrap" style="display:none;margin-top:10px">
-          <input type="number" id="customVolt" placeholder="Tensão personalizada" inputmode="decimal"><span>V</span>
+          <input type="text" id="customVolt" placeholder="Tensão personalizada" inputmode="decimal"><span>V</span>
         </div>
       </div>
       <div class="field">
@@ -538,7 +538,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       </div>
       <div class="field">
         <label>Fator de potência</label>
-        <div class="suffix"><input type="number" id="pf" value="1" step="0.01" min="0.1" max="1" inputmode="decimal"><span>FP</span></div>
+        <div class="suffix"><input type="text" id="pf" value="1" step="0.01" min="0.1" max="1" inputmode="decimal"><span>FP</span></div>
         <div class="hint">Recomendado <b>0,8</b> para gerador. <a id="pfGen" style="color:var(--acc2);cursor:pointer;font-weight:700">aplicar</a></div>
       </div>
     </div>
@@ -559,7 +559,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <details class="sector-vd">
         <summary>Queda de tensão</summary>
       <div class="row" style="margin-top:2px">
-        <div class="field"><label>Comprimento do cabo</label><div class="suffix"><input type="number" id="vdLen" value="" placeholder="0" step="1" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Comprimento do cabo</label><div class="suffix"><input type="text" id="vdLen" value="" placeholder="0" step="1" inputmode="decimal"><span>m</span></div></div>
         <div class="field"><label>Bitola</label>
           <select id="vdSec">
             <option value="auto">Auto (cabo sugerido)</option>
@@ -588,7 +588,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
             <option value="0.0283">Alumínio 20°C (0,0283 Ω·mm²/m)</option>
           </select>
         </div>
-        <div class="field"><label>Limite aceitável</label><div class="suffix"><input type="number" id="vdLimit" value="4" step="0.5" min="1" inputmode="decimal"><span>%</span></div></div>
+        <div class="field"><label>Limite aceitável</label><div class="suffix"><input type="text" id="vdLimit" value="4" step="0.5" min="1" inputmode="decimal"><span>%</span></div></div>
       </div>
       <div class="results" id="vdResults"></div>
       <div class="hint" id="vdHint"></div>
@@ -628,7 +628,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <h3>Dados</h3>
       <div class="field" id="f-throw">
         <label>Throw ratio da lente (D/L)</label>
-        <div class="suffix"><input type="number" id="throw" value="1.5" step="0.01" inputmode="decimal"><span>:1</span></div>
+        <div class="suffix"><input type="text" id="throw" value="1.5" step="0.01" inputmode="decimal"><span>:1</span></div>
       </div>
       <div class="field" id="f-sizeunit">
         <label>Medir a tela por</label>
@@ -639,15 +639,15 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       </div>
       <div class="field" id="f-width">
         <label>Largura da imagem</label>
-        <div class="suffix"><input type="number" id="imgW" value="4" step="0.1" inputmode="decimal"><span>m</span></div>
+        <div class="suffix"><input type="text" id="imgW" value="4" step="0.1" inputmode="decimal"><span>m</span></div>
       </div>
       <div class="field" id="f-diag" style="display:none">
         <label>Tamanho da tela (diagonal)</label>
-        <div class="suffix"><input type="number" id="imgDiag" value="150" step="1" inputmode="decimal"><span>"</span></div>
+        <div class="suffix"><input type="text" id="imgDiag" value="150" step="1" inputmode="decimal"><span>"</span></div>
       </div>
       <div class="field" id="f-dist">
         <label>Distância projetor → tela</label>
-        <div class="suffix"><input type="number" id="dist" value="6" step="0.1" inputmode="decimal"><span>m</span></div>
+        <div class="suffix"><input type="text" id="dist" value="6" step="0.1" inputmode="decimal"><span>m</span></div>
       </div>
       <div class="field">
         <label>Proporção da imagem</label>
@@ -663,8 +663,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="field" id="f-aspect-custom" style="display:none">
         <label>Proporção personalizada (L : A)</label>
         <div class="row">
-          <div class="field"><div class="suffix"><input type="number" id="aspW" value="16" step="0.01" inputmode="decimal"><span>L</span></div></div>
-          <div class="field"><div class="suffix"><input type="number" id="aspH" value="9" step="0.01" inputmode="decimal"><span>A</span></div></div>
+          <div class="field"><div class="suffix"><input type="text" id="aspW" value="16" step="0.01" inputmode="decimal"><span>L</span></div></div>
+          <div class="field"><div class="suffix"><input type="text" id="aspH" value="9" step="0.01" inputmode="decimal"><span>A</span></div></div>
         </div>
       </div>
     </div>
@@ -678,12 +678,12 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     <div class="card">
       <h3>Blending (multi-projetor)</h3>
       <div class="row">
-        <div class="field"><label>Projetores (horizontal)</label><input type="number" id="bpH" value="2" min="1" inputmode="numeric"></div>
-        <div class="field"><label>Projetores (vertical)</label><input type="number" id="bpV" value="1" min="1" inputmode="numeric"></div>
+        <div class="field"><label>Projetores (horizontal)</label><input type="text" id="bpH" value="2" min="1" inputmode="numeric"></div>
+        <div class="field"><label>Projetores (vertical)</label><input type="text" id="bpV" value="1" min="1" inputmode="numeric"></div>
       </div>
       <div class="row" style="margin-top:14px">
-        <div class="field"><label>Sobreposição (blend)</label><div class="suffix"><input type="number" id="bOverlap" value="20" step="1" min="0" max="50" inputmode="decimal"><span>%</span></div></div>
-        <div class="field"><label>Largura total da tela</label><div class="suffix"><input type="number" id="bWidth" value="8" step="0.1" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Sobreposição (blend)</label><div class="suffix"><input type="text" id="bOverlap" value="20" step="1" min="0" max="50" inputmode="decimal"><span>%</span></div></div>
+        <div class="field"><label>Largura total da tela</label><div class="suffix"><input type="text" id="bWidth" value="8" step="0.1" inputmode="decimal"><span>m</span></div></div>
       </div>
       <div class="field" style="margin-top:14px">
         <label>Resolução nativa do projetor</label>
@@ -697,12 +697,12 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         </select>
       </div>
       <div class="row" id="bResCustom" style="margin-top:14px;display:none">
-        <div class="field"><label>Largura</label><div class="suffix"><input type="number" id="bResW" value="1920" inputmode="numeric"><span>px</span></div></div>
-        <div class="field"><label>Altura</label><div class="suffix"><input type="number" id="bResH" value="1200" inputmode="numeric"><span>px</span></div></div>
+        <div class="field"><label>Largura</label><div class="suffix"><input type="text" id="bResW" value="1920" inputmode="numeric"><span>px</span></div></div>
+        <div class="field"><label>Altura</label><div class="suffix"><input type="text" id="bResH" value="1200" inputmode="numeric"><span>px</span></div></div>
       </div>
       <div class="field" style="margin-top:14px">
         <label>Throw ratio da lente</label>
-        <div class="suffix"><input type="number" id="bThrow" value="1.5" step="0.01" inputmode="decimal"><span>:1</span></div>
+        <div class="suffix"><input type="text" id="bThrow" value="1.5" step="0.01" inputmode="decimal"><span>:1</span></div>
       </div>
       <div class="results" id="blendResults" style="margin-top:6px"></div>
       <div class="hint">A largura total da tela é dividida entre os projetores considerando as zonas de sobreposição. A imagem de cada projetor segue a proporção da resolução nativa.</div>
@@ -729,8 +729,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <select id="splBox"></select>
       </div>
       <div class="row" style="margin-top:14px">
-        <div class="field"><label>Max SPL @1m</label><div class="suffix"><input type="number" id="splRef" step="1" inputmode="decimal"><span>dB</span></div></div>
-        <div class="field"><label>Distância</label><div class="suffix"><input type="number" id="splDist" value="0" step="1" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Max SPL @1m</label><div class="suffix"><input type="text" id="splRef" step="1" inputmode="decimal"><span>dB</span></div></div>
+        <div class="field"><label>Distância</label><div class="suffix"><input type="text" id="splDist" value="0" step="1" inputmode="decimal"><span>m</span></div></div>
       </div>
       <div class="field" style="margin-top:14px" id="splRefWrap">
         <label>Referência</label>
@@ -754,11 +754,11 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <h3>Cobertura (alvo)</h3>
       <div class="field">
         <label>SPL alvo no público</label>
-        <div class="suffix"><input type="number" id="covTarget" value="100" step="1" inputmode="decimal"><span>dB</span></div>
+        <div class="suffix"><input type="text" id="covTarget" value="100" step="1" inputmode="decimal"><span>dB</span></div>
       </div>
       <div class="row" style="margin-top:14px">
-        <div class="field"><label>Primeira fila</label><div class="suffix"><input type="number" id="covFront" value="0" step="0.5" inputmode="decimal"><span>m</span></div></div>
-        <div class="field"><label>Última fila</label><div class="suffix"><input type="number" id="covBack" value="0" step="0.5" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Primeira fila</label><div class="suffix"><input type="text" id="covFront" value="0" step="0.5" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Última fila</label><div class="suffix"><input type="text" id="covBack" value="0" step="0.5" inputmode="decimal"><span>m</span></div></div>
       </div>
       <div class="results" id="covResults" style="margin-top:14px"></div>
       <div class="hint" id="covHint"></div>
@@ -769,8 +769,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     <div class="card">
       <h3>Condições</h3>
       <div class="row">
-        <div class="field"><label>Temperatura</label><div class="suffix"><input type="number" id="dlTemp" value="25" step="1" inputmode="decimal"><span>°C</span></div></div>
-        <div class="field"><label>Offset (Haas) <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="number" id="dlOffset" value="0" step="1" inputmode="decimal"><span>ms</span></div></div>
+        <div class="field"><label>Temperatura</label><div class="suffix"><input type="text" id="dlTemp" value="25" step="1" inputmode="decimal"><span>°C</span></div></div>
+        <div class="field"><label>Offset (Haas) <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="text" id="dlOffset" value="0" step="1" inputmode="decimal"><span>ms</span></div></div>
       </div>
       <div class="hint" id="dlHint"></div>
     </div>
@@ -808,6 +808,17 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
 const $ = id => document.getElementById(id);
 const fmt = (n,d=0) => isFinite(n) ? n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}) : '—';
 const fmtMm = n => fmt(n, n%1?1:0);   // bitola: vírgula só quando tem decimal (1,5 / 2,5 / 4 / 10…)
+
+// Campos numéricos aceitam vírgula (iPhone/Android) — converte "," → "." na hora, mantendo o cursor.
+// Delegado no documento p/ pegar também os campos criados dinamicamente (setores, torres, aparelhos…).
+document.addEventListener('input', e => {
+  const el = e.target;
+  if(el.tagName==='INPUT' && el.inputMode==='decimal' && el.value.indexOf(',')>=0){
+    const p = el.selectionStart;
+    el.value = el.value.replace(/,/g,'.');
+    try{ el.setSelectionRange(p,p); }catch(_){}
+  }
+}, true);
 
 /* ============ NAV (sidebar) ============ */
 document.querySelectorAll('.side-nav button').forEach(b=>{
@@ -1319,8 +1330,8 @@ function eqRow(catK){
   const div=document.createElement('div');
   div.className='eq';
   div.innerHTML=`<input class="nm" placeholder="Buscar equipamento…" autocomplete="off">
-    <input class="pw" type="number" inputmode="decimal" placeholder="W">
-    <input class="qt" type="number" inputmode="numeric" value="1">
+    <input class="pw" type="text" inputmode="decimal" placeholder="W">
+    <input class="qt" type="text" inputmode="numeric" value="1">
     <button class="del" title="Remover">×</button>
     <div class="eq-suggest" style="display:none"></div>`;
   const nmI=div.querySelector('.nm'), pwI=div.querySelector('.pw'), qtI=div.querySelector('.qt'), sug=div.querySelector('.eq-suggest');
@@ -1364,7 +1375,7 @@ function addSector(cat, dlKey){
       <div class="sector-phases" style="display:none"><span class="ph-lbl">Fases</span><button class="ph-btn ph-f" data-p="1">F1</button><button class="ph-btn ph-f" data-p="2">F2</button><button class="ph-btn ph-f" data-p="3">F3</button><button class="ph-btn ph-n">N</button></div>
       <details class="sector-res"><summary>Resultado do setor</summary><div class="results sector-res-body"></div></details>
       <details class="sector-vd"><summary>Queda de tensão</summary>
-        <div class="field vd-inputs"><label>Comprimento do cabo</label><div class="suffix"><input type="number" class="vd-len" value="" placeholder="0" step="1" inputmode="decimal"><span>m</span></div></div>
+        <div class="field vd-inputs"><label>Comprimento do cabo</label><div class="suffix"><input type="text" class="vd-len" value="" placeholder="0" step="1" inputmode="decimal"><span>m</span></div></div>
         <div class="results vd-body"></div>
       </details>
     </div>`;
@@ -1784,7 +1795,7 @@ function towerItem(){
   const div=document.createElement('div'); div.className='tower';
   div.innerHTML=`<div class="tower-head">
       <input class="tw-name" placeholder="Torre" value="Torre ${++towerSeq}">
-      <div class="suffix" style="flex:0 0 120px;margin-bottom:0"><input class="tw-dist" type="number" placeholder="0" step="0.1" inputmode="decimal"><span>m</span></div>
+      <div class="suffix" style="flex:0 0 120px;margin-bottom:0"><input class="tw-dist" type="text" placeholder="0" step="0.1" inputmode="decimal"><span>m</span></div>
       <button class="tw-del" title="Remover">×</button>
     </div>
     <div class="results tw-out" style="margin-top:10px"></div>`;
@@ -1844,8 +1855,8 @@ function fxRow(){
   const opts=LIGHTS.map((f,i)=>`<option value="${i}">${f.n} · ${f.c} ch</option>`).join('')+`<option value="custom">Personalizado</option>`;
   div.innerHTML=`<select class="fx-name">${opts}</select>
     <div class="fx-row2">
-      <div class="fx-mini"><label>Canais</label><input class="fx-ch" type="number" inputmode="numeric" min="1"></div>
-      <div class="fx-mini"><label>Qtd</label><input class="fx-qty" type="number" inputmode="numeric" min="1" value="1"></div>
+      <div class="fx-mini"><label>Canais</label><input class="fx-ch" type="text" inputmode="numeric" min="1"></div>
+      <div class="fx-mini"><label>Qtd</label><input class="fx-qty" type="text" inputmode="numeric" min="1" value="1"></div>
       <button class="fx-del" title="Remover">×</button>
     </div>`;
   const nameS=div.querySelector('.fx-name'), chI=div.querySelector('.fx-ch');
