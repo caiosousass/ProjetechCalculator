@@ -1234,7 +1234,11 @@ const PANELS=[
 })();
 function applyPanel(){
   const v=$('preset').value;
-  if(v==='custom'){ $('panelSpecs').style.display='none'; calcPixel(); return; }
+  if(v==='custom'){                                        // limpa tudo p/ preencher do zero
+    $('panelSpecs').style.display='none';
+    ['mw','mh','mpxw','mpxh','mkg','mavg','mmax','mcase'].forEach(id=>$(id).value='');
+    calcPixel(); return;
+  }
   const p=PANELS[+v];
   $('mw').value=p.w; $('mh').value=p.h;
   $('mpxw').value=p.rw; $('mpxh').value=p.rh;
@@ -1621,8 +1625,18 @@ function calcProj(){
   $('projResults').innerHTML=html;
 }
 ['throw','imgW','imgDiag','dist','aspW','aspH'].forEach(id=>$(id).addEventListener('input',calcProj));
+let lastAspect='1.7778';
+const ASPECT_WH={'1.7778':[16,9],'1.6':[16,10],'1.3333':[4,3],'2.3529':[21,9],'1':[1,1]};
 $('aspect').addEventListener('change',()=>{
-  $('f-aspect-custom').style.display = $('aspect').value==='custom' ? 'block':'none';
+  const v=$('aspect').value;
+  if(v==='custom'){                                        // começa da proporção que estava selecionada
+    const wh=ASPECT_WH[lastAspect]||[16,9];
+    $('aspW').value=wh[0]; $('aspH').value=wh[1];
+    $('f-aspect-custom').style.display='block';
+  }else{
+    lastAspect=v;
+    $('f-aspect-custom').style.display='none';
+  }
   calcProj();
 });
 
@@ -1661,8 +1675,16 @@ function calcBlend(){
   $('blendResults').innerHTML=h;
 }
 ['bpH','bpV','bOverlap','bWidth','bResW','bResH','bThrow'].forEach(id=>$(id).addEventListener('input',calcBlend));
+let lastRes='1920x1200';
 $('bResPreset').addEventListener('change',()=>{
-  $('bResCustom').style.display = $('bResPreset').value==='custom' ? 'flex':'none';
+  const v=$('bResPreset').value;
+  if(v==='custom'){                                        // começa da resolução que estava selecionada
+    const p=lastRes.split('x'); $('bResW').value=p[0]; $('bResH').value=p[1];
+    $('bResCustom').style.display='flex';
+  }else{
+    lastRes=v;
+    $('bResCustom').style.display='none';
+  }
   calcBlend();
 });
 
@@ -1695,7 +1717,7 @@ function applySplBox(){
   const val=$('splBox').value;
   if(val==='custom'){
     $('splRefWrap').style.display='none';
-    if(!$('splRef').value) $('splRef').value=130;
+    $('splRef').value='';                                  // limpa p/ informar o Max SPL da caixa
   }else{
     const s=SPK[+val];
     $('splRefWrap').style.display='';
@@ -1860,7 +1882,7 @@ function fxRow(){
       <button class="fx-del" title="Remover">×</button>
     </div>`;
   const nameS=div.querySelector('.fx-name'), chI=div.querySelector('.fx-ch');
-  const syncCh=()=>{ if(nameS.value!=='custom') chI.value=LIGHTS[+nameS.value].c; };
+  const syncCh=()=>{ chI.value = nameS.value==='custom' ? '' : LIGHTS[+nameS.value].c; };   // custom = canais em branco
   syncCh();
   nameS.addEventListener('change',()=>{ syncCh(); calcDmx(); });
   chI.addEventListener('input',calcDmx);
