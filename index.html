@@ -327,8 +327,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     <div class="card">
       <h3>Dimensão</h3>
       <div class="row">
-        <div class="field"><label>Largura</label><div class="suffix"><input type="text" id="wallw" value="3" step="0.01" inputmode="decimal"><span>m</span></div></div>
-        <div class="field"><label>Altura</label><div class="suffix"><input type="text" id="wallh" value="1.5" step="0.01" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Largura</label><div class="suffix"><input type="text" id="wallw" value="5" step="0.01" inputmode="decimal"><span>m</span></div></div>
+        <div class="field"><label>Altura</label><div class="suffix"><input type="text" id="wallh" value="3" step="0.01" inputmode="decimal"><span>m</span></div></div>
       </div>
       <div class="hint">A quantidade de gabinetes é calculada pela dimensão ÷ tamanho do módulo (gabinetes inteiros).</div>
     </div>
@@ -367,7 +367,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="row" style="align-items:flex-start">
         <div class="field" style="flex:0 0 auto">
           <label>Cor</label>
-          <input type="color" id="tiColor" value="#ff0000">
+          <input type="color" id="tiColor" value="#0dcbfc">
         </div>
         <div class="field" style="flex:0 0 auto;display:none" id="f-color2">
           <label>Cor 2</label>
@@ -381,7 +381,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
             <button class="chip on" data-opt="circle">Círculo</button>
             <button class="chip on" data-opt="diag">Diagonais</button>
             <button class="chip" data-opt="info">Info</button>
-            <button class="chip" data-opt="logo">Logo</button>
+            <button class="chip on" data-opt="logo">Logo</button>
             <button class="chip" data-opt="border">Borda</button>
           </div>
         </div>
@@ -456,7 +456,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           <div class="field"><label>Y</label><div class="suffix"><input type="text" id="infoY" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
         </div>
       </details>
-      <details id="tiLogoOpts" class="sector-res" open style="display:none;margin-top:12px"><summary>Configurar logo</summary>
+      <details id="tiLogoOpts" class="sector-res" open style="margin-top:12px"><summary>Configurar logo</summary>
         <div class="field">
           <label>Logo Projetech</label>
           <div class="seg" id="segLogoSrc">
@@ -478,7 +478,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
             <option value="bl">Inferior esquerda</option>
             <option value="tr">Superior direita</option>
             <option value="tl">Superior esquerda</option>
-            <option value="center">Centro</option>
+            <option value="center" selected>Centro</option>
             <option value="custom">Personalizado (X/Y em px)</option>
           </select>
         </div>
@@ -487,8 +487,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           <div class="field"><label>Y</label><div class="suffix"><input type="text" id="logoY" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
         </div>
         <div class="field">
-          <label>Escala <span id="logoScaleVal" style="color:var(--mut2)">30%</span></label>
-          <input type="range" id="logoScale" min="5" max="100" value="30" style="width:100%">
+          <label>Escala <span id="logoScaleVal" style="color:var(--mut2)">50%</span></label>
+          <input type="range" id="logoScale" min="5" max="100" value="50" style="width:100%">
         </div>
       </details>
       <details id="tiBorderOpts" class="sector-res" open style="display:none;margin-top:12px"><summary>Configurar borda</summary>
@@ -874,10 +874,10 @@ let showPerson=true, personHeight=1.7;
 let pmeta={};
 let curBg='grad';
 let infoSize=0.03, infoAlign='center', infoWeight='400';
-const tiOpts={grid:true,numbers:true,circle:true,diag:true,info:false,logo:false,border:false};
+const tiOpts={grid:true,numbers:true,circle:true,diag:true,info:false,logo:true,border:false};
 let borderPx=15;
 // logo na imagem de teste
-let logoSource='1', logoPos='br', logoSizeFrac=0.30;
+let logoSource='1', logoPos='center', logoSizeFrac=0.50;
 const logoFiles={'1':'logo1.png','2':'logo2.png','3':'logo3.png','4':'logo4.png'};
 const logoImgs={};
 Object.keys(logoFiles).forEach(k=>{ const im=new Image(); im.onload=()=>drawTest(); im.src=logoFiles[k]; logoImgs[k]=im; });
