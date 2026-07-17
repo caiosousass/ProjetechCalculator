@@ -805,6 +805,28 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
 
 <script src="equipment.js"></script>
 <script>
+/* ===== Trava "somente embutido" — DESLIGADA por enquanto =====
+   Pra ativar depois que estiver embutido no site da Projetech:
+     1) trocar EMBED_LOCK para true
+     2) conferir EMBED_ALLOWED com o domínio real do referrer do Wix (testar antes!)
+   Com a trava ligada, abrir o link direto (fora do site) mostra aviso e não abre o app.
+   localhost fica sempre liberado (pra desenvolvimento). */
+const EMBED_LOCK = false;
+const EMBED_ALLOWED = ['projetech.com.br'];   // origens liberadas p/ embutir (ajustar após testar no Wix)
+(function embedGuard(){
+  if(!EMBED_LOCK) return;
+  const host = location.hostname;
+  if(host==='localhost' || host==='127.0.0.1') return;                 // dev sempre liberado
+  const framed = window.self !== window.top;                            // precisa estar dentro de um iframe
+  const okRef = EMBED_ALLOWED.some(d => (document.referrer||'').includes(d));
+  if(framed && okRef) return;                                           // liberado dentro do site
+  document.body.innerHTML =
+    '<div style="min-height:100vh;display:grid;place-items:center;padding:32px;text-align:center;font-family:system-ui,-apple-system,sans-serif;background:#0b1020;color:#eef2ff">'
+    + '<div><div style="font-size:20px;font-weight:700;margin-bottom:10px">Acesso restrito</div>'
+    + '<div style="color:#93a0c7;max-width:360px;line-height:1.6">Esta ferramenta é exclusiva para técnicos da Projetech. Acesse pela área de membros do site <b>projetech.com.br</b>.</div></div></div>';
+  throw new Error('embed-lock: acesso apenas pelo site');
+})();
+
 const $ = id => document.getElementById(id);
 const fmt = (n,d=0) => isFinite(n) ? n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}) : '—';
 const fmtMm = n => fmt(n, n%1?1:0);   // bitola: vírgula só quando tem decimal (1,5 / 2,5 / 4 / 10…)
