@@ -1148,13 +1148,15 @@ const glowPeriod=()=> effectSpeed==='slow'?2800 : effectSpeed==='fast'?1100 : 19
 function drawGlow(ctx,W,H,t){
   const CX=W/2, CY=H/2, maxR=Math.hypot(W/2,H/2)+W*0.03;
   const p=(t%glowPeriod())/glowPeriod();
-  const R=Math.max(1,p*maxR), a=(1-p)*0.75, col=hexRgb($('tiColor').value);
+  const R=Math.max(1,p*maxR), a=(1-p)*0.98, col=hexRgb($('tiColor').value);
   ctx.save(); ctx.globalCompositeOperation='screen';
   const g=ctx.createRadialGradient(CX,CY,0,CX,CY,R);
-  g.addColorStop(0,`rgba(${col},${a*0.18})`);
-  g.addColorStop(0.62,`rgba(${col},${a})`);
+  g.addColorStop(0,`rgba(${col},${a*0.55})`);        // miolo mais forte
+  g.addColorStop(0.45,`rgba(${col},${a*0.9})`);      // banda larga e densa
+  g.addColorStop(0.72,`rgba(${col},${a})`);
   g.addColorStop(1,`rgba(${col},0)`);
-  ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.restore();
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.restore();
 }
 function animLoop(ts){
   if(effect!=='glow'){ animId=null; return; }
