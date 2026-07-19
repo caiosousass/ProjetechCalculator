@@ -300,6 +300,14 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     <p class="screen-sub">Calcule resolução, dimensão e pitch do painel</p>
 
     <div class="card">
+      <div class="seg" id="segPixel">
+        <button data-t="spec" class="on">Especificações</button>
+        <button data-t="map">Pixel Map</button>
+      </div>
+    </div>
+
+    <div id="pixelSpec">
+    <div class="card">
       <h3>Gabinete</h3>
       <div class="field">
         <label>Modelo</label>
@@ -333,10 +341,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="hint">A quantidade de gabinetes é calculada pela dimensão ÷ tamanho do módulo (gabinetes inteiros).</div>
     </div>
 
-    <div class="card" id="pixel-results-card">
-      <h3>Resultado</h3>
-      <div class="results" id="pixelResults"></div>
-      <div class="divider"></div>
+    <div class="card">
+      <h3>Pré-visualização</h3>
       <div class="row">
         <div class="field">
           <label>Pessoa de referência</label>
@@ -351,6 +357,13 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         </div>
       </div>
       <div class="aspect-vis"><svg id="aspectSvg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Painel com pessoa de referência"></svg></div>
+    </div>
+    </div>
+
+    <div id="pixelMap" style="display:none">
+    <div class="card" id="pixel-results-card">
+      <h3>Resultado</h3>
+      <div class="results" id="pixelResults"></div>
     </div>
 
     <div class="card">
@@ -506,6 +519,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="ti-preview"><canvas id="tiCanvas"></canvas></div>
       <button class="btn btn-primary" id="tiDownload">⬇ Baixar PNG</button>
       <div class="hint" id="tiInfo"></div>
+    </div>
     </div>
   </section>
 
@@ -1282,6 +1296,16 @@ function syncPreset(){
 }
 ['mpxw','mpxh','mw','mh'].forEach(id=>$(id).addEventListener('input',syncPreset));
 applyPanel();
+
+/* abas do Pixel Map (Especificações · Pixel Map) */
+$('segPixel').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segPixel').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  const t=b.dataset.t;
+  $('pixelSpec').style.display = t==='spec' ? '' : 'none';
+  $('pixelMap').style.display  = t==='map'  ? '' : 'none';
+  window.scrollTo(0,0);
+});
 
 /* ============ ELÉTRICA ============ */
 let volt=220, phase=3;
