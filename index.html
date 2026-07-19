@@ -516,8 +516,30 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           </div>
         </div>
       </details>
+      <div class="field" style="margin-top:12px">
+        <label>Efeito (movimento)</label>
+        <div class="seg" id="segEffect">
+          <button data-e="none" class="on">Nenhum</button>
+          <button data-e="glow">Glow explodindo</button>
+        </div>
+      </div>
+      <div class="field" id="effectSpeedWrap" style="display:none;margin-top:12px">
+        <label>Velocidade</label>
+        <div class="seg" id="segSpeed">
+          <button data-s="slow">Lento</button>
+          <button data-s="med" class="on">Médio</button>
+          <button data-s="fast">Rápido</button>
+        </div>
+      </div>
       <div class="ti-preview"><canvas id="tiCanvas"></canvas></div>
-      <button class="btn btn-primary" id="tiDownload">⬇ Baixar PNG</button>
+      <div class="row" style="gap:8px">
+        <button class="btn btn-primary" id="tiDownload" style="flex:1">⬇ Baixar PNG</button>
+        <button class="btn btn-ghost" id="tiVideo" style="flex:1;display:none">⬇ Baixar vídeo</button>
+      </div>
+      <div class="field" id="videoDurWrap" style="display:none;margin-top:10px">
+        <label>Duração do vídeo <span id="vdurVal" style="color:var(--mut2)">8 s</span></label>
+        <input type="range" id="videoDur" min="3" max="20" value="8" style="width:100%">
+      </div>
       <div class="hint" id="tiInfo"></div>
     </div>
     </div>
@@ -1115,7 +1137,75 @@ function drawTest(){
     ctx.strokeRect(bw/2,bw/2,W-bw,H-bw);
   }
   $('tiInfo').textContent=`Imagem: ${fmt(W)} × ${fmt(H)} px`;
+  // guarda o padrão base (sem efeito) num canvas offscreen p/ a animação reaproveitar
+  baseCv.width=W; baseCv.height=H; baseCtx.clearRect(0,0,W,H); baseCtx.drawImage(cv,0,0);
 }
+/* ===== Efeito animado (Glow explodindo) por cima do teste ===== */
+const baseCv=document.createElement('canvas'), baseCtx=baseCv.getContext('2d');
+let effect='none', effectSpeed='med', animId=null;
+const hexRgb=h=>{ h=(h||'#ffffff').replace('#',''); if(h.length===3)h=h.split('').map(x=>x+x).join(''); const n=parseInt(h,16); return `${(n>>16)&255},${(n>>8)&255},${n&255}`; };
+const glowPeriod=()=> effectSpeed==='slow'?2800 : effectSpeed==='fast'?1100 : 1900;
+function drawGlow(ctx,W,H,t){
+  const CX=W/2, CY=H/2, maxR=Math.hypot(W/2,H/2)+W*0.03;
+  const p=(t%glowPeriod())/glowPeriod();
+  const R=Math.max(1,p*maxR), a=(1-p)*0.75, col=hexRgb($('tiColor').value);
+  ctx.save(); ctx.globalCompositeOperation='screen';
+  const g=ctx.createRadialGradient(CX,CY,0,CX,CY,R);
+  g.addColorStop(0,`rgba(${col},${a*0.18})`);
+  g.addColorStop(0.62,`rgba(${col},${a})`);
+  g.addColorStop(1,`rgba(${col},0)`);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.restore();
+}
+function animLoop(ts){
+  if(effect!=='glow'){ animId=null; return; }
+  const cv=$('tiCanvas'), ctx=cv.getContext('2d');
+  if(baseCv.width){ ctx.drawImage(baseCv,0,0); drawGlow(ctx,cv.width,cv.height,ts); }
+  animId=requestAnimationFrame(animLoop);
+}
+function startAnim(){ if(effect==='glow' && animId==null) animId=requestAnimationFrame(animLoop); }
+function stopAnim(){ if(animId){ cancelAnimationFrame(animId); animId=null; } }
+$('segEffect').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segEffect').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); effect=b.dataset.e;
+  const on = effect==='glow';
+  $('effectSpeedWrap').style.display = on?'':'none';
+  $('videoDurWrap').style.display = (on && videoOK)?'':'none';
+  if(on){ startAnim(); } else { stopAnim(); drawTest(); }
+});
+$('segSpeed').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segSpeed').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); effectSpeed=b.dataset.s;
+});
+/* ===== Exportar vídeo (WebM/MP4) ===== */
+const videoOK = (typeof MediaRecorder!=='undefined') && !!HTMLCanvasElement.prototype.captureStream;
+if(videoOK) $('tiVideo').style.display='';
+$('videoDur').addEventListener('input',()=>{ $('vdurVal').textContent=$('videoDur').value+' s'; });
+$('tiVideo').onclick=()=>{
+  const cv=$('tiCanvas'); if(!cv.width || !videoOK) return;
+  if(effect!=='glow'){ $('segEffect').querySelector('[data-e="glow"]').click(); }   // vídeo precisa do movimento
+  const cands=['video/mp4;codecs=h264','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  const mime=cands.find(m=>MediaRecorder.isTypeSupported(m))||'';
+  const ext=mime.includes('mp4')?'mp4':'webm';
+  const stream=cv.captureStream(30);
+  let rec; try{ rec=new MediaRecorder(stream, mime?{mimeType:mime,videoBitsPerSecond:12000000}:undefined); }
+  catch(e){ alert('Seu navegador não suporta gerar vídeo. Use no computador, ou grave a tela.'); return; }
+  const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  const btn=$('tiVideo'), lbl=btn.textContent;
+  rec.onstop=()=>{
+    const blob=new Blob(chunks,{type:mime||'video/webm'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    const tit=$('tiTitle').value.trim();
+    a.download=`${tit?tit+' - ':''}${pmeta.totPxW} x ${pmeta.totPxH} - Projetech Calculator.${ext}`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+    btn.textContent=lbl; btn.disabled=false;
+  };
+  btn.disabled=true;
+  const dur=(+$('videoDur').value||8);
+  let left=dur; btn.textContent=`● Gravando… ${left}s`;
+  const tick=setInterval(()=>{ left--; if(left>0) btn.textContent=`● Gravando… ${left}s`; },1000);
+  rec.start();
+  setTimeout(()=>{ clearInterval(tick); rec.stop(); }, dur*1000);
+};
 $('segBg').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segBg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); curBg=b.dataset.b;
@@ -1234,14 +1324,18 @@ $('tiInfoFont').addEventListener('change',drawTest);
 $('tiTitle').addEventListener('input',drawTest);
 $('tiDownload').onclick=()=>{
   const cv=$('tiCanvas'); if(!cv.width) return;
+  const wasGlow = effect==='glow';
+  if(wasGlow){ stopAnim(); drawTest(); }              // PNG = teste limpo, sem o glow
   cv.toBlob(b=>{
-    if(!b) return;
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(b);
-    const tit=$('tiTitle').value.trim();
-    a.download=`${tit?tit+' - ':''}${pmeta.totPxW} x ${pmeta.totPxH} - Projetech Calculator.png`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+    if(b){
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(b);
+      const tit=$('tiTitle').value.trim();
+      a.download=`${tit?tit+' - ':''}${pmeta.totPxW} x ${pmeta.totPxH} - Projetech Calculator.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+    }
+    if(wasGlow) startAnim();                           // retoma o glow só após gerar o PNG
   },'image/png');
 };
 
