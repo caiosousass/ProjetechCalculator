@@ -537,8 +537,9 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <button class="btn btn-ghost" id="tiVideo" style="flex:1;display:none">⬇ Baixar vídeo</button>
       </div>
       <div class="field" id="videoDurWrap" style="display:none;margin-top:10px">
-        <label>Duração do vídeo <span id="vdurVal" style="color:var(--mut2)">8 s</span></label>
-        <input type="range" id="videoDur" min="3" max="20" value="8" style="width:100%">
+        <label>Loops do efeito no vídeo <span id="vdurVal" style="color:var(--mut2)">5</span></label>
+        <input type="range" id="videoLoops" min="1" max="10" value="5" style="width:100%">
+        <div class="hint" style="margin-top:6px">O vídeo fecha exatamente no fim do último loop — emenda perfeita pra rodar em loop infinito (Resolume).</div>
       </div>
       <div class="hint" id="tiInfo"></div>
     </div>
@@ -1142,7 +1143,7 @@ function drawTest(){
 }
 /* ===== Efeito animado (Glow explodindo) por cima do teste ===== */
 const baseCv=document.createElement('canvas'), baseCtx=baseCv.getContext('2d');
-let effect='none', effectSpeed='med', animId=null;
+let effect='none', effectSpeed='med', animId=null, glowT0=0;
 const hexRgb=h=>{ h=(h||'#ffffff').replace('#',''); if(h.length===3)h=h.split('').map(x=>x+x).join(''); const n=parseInt(h,16); return `${(n>>16)&255},${(n>>8)&255},${n&255}`; };
 const glowPeriod=()=> effectSpeed==='slow'?2800 : effectSpeed==='fast'?1100 : 1900;
 function drawGlow(ctx,W,H,t){
@@ -1161,7 +1162,7 @@ function drawGlow(ctx,W,H,t){
 function animLoop(ts){
   if(effect!=='glow'){ animId=null; return; }
   const cv=$('tiCanvas'), ctx=cv.getContext('2d');
-  if(baseCv.width){ ctx.drawImage(baseCv,0,0); drawGlow(ctx,cv.width,cv.height,ts); }
+  if(baseCv.width){ ctx.drawImage(baseCv,0,0); drawGlow(ctx,cv.width,cv.height,ts-glowT0); }
   animId=requestAnimationFrame(animLoop);
 }
 function startAnim(){ if(effect==='glow' && animId==null) animId=requestAnimationFrame(animLoop); }
@@ -1176,12 +1177,14 @@ $('segEffect').querySelectorAll('button').forEach(b=>b.onclick=()=>{
 });
 $('segSpeed').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segSpeed').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); effectSpeed=b.dataset.s;
+  b.classList.add('on'); effectSpeed=b.dataset.s; updVdurLabel();
 });
 /* ===== Exportar vídeo (WebM/MP4) ===== */
 const videoOK = (typeof MediaRecorder!=='undefined') && !!HTMLCanvasElement.prototype.captureStream;
 if(videoOK) $('tiVideo').style.display='';
-$('videoDur').addEventListener('input',()=>{ $('vdurVal').textContent=$('videoDur').value+' s'; });
+function updVdurLabel(){ const n=+$('videoLoops').value||5; $('vdurVal').textContent=`${n} (≈ ${(n*glowPeriod()/1000).toFixed(1).replace('.',',')} s)`; }
+$('videoLoops').addEventListener('input',updVdurLabel);
+updVdurLabel();
 $('tiVideo').onclick=()=>{
   const cv=$('tiCanvas'); if(!cv.width || !videoOK) return;
   if(effect!=='glow'){ $('segEffect').querySelector('[data-e="glow"]').click(); }   // vídeo precisa do movimento
@@ -1202,11 +1205,13 @@ $('tiVideo').onclick=()=>{
     btn.textContent=lbl; btn.disabled=false;
   };
   btn.disabled=true;
-  const dur=(+$('videoDur').value||8);
-  let left=dur; btn.textContent=`● Gravando… ${left}s`;
+  const loops=(+$('videoLoops').value||5), period=glowPeriod();
+  const durMs=loops*period;                          // fecha exatamente no fim do último loop
+  glowT0=performance.now();                           // reinicia o efeito no ponto 0 (emenda perfeita)
+  let left=Math.round(durMs/1000); btn.textContent=`● Gravando… ${left}s`;
   const tick=setInterval(()=>{ left--; if(left>0) btn.textContent=`● Gravando… ${left}s`; },1000);
   rec.start();
-  setTimeout(()=>{ clearInterval(tick); rec.stop(); }, dur*1000);
+  setTimeout(()=>{ clearInterval(tick); rec.stop(); }, durMs);
 };
 $('segBg').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segBg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
