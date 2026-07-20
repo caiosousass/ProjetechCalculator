@@ -840,6 +840,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
 </div>
 
 <script src="equipment.js"></script>
+<script src="mp4-muxer.min.js"></script>
 <script>
 /* ===== Trava "somente embutido" — DESLIGADA por enquanto =====
    Pra ativar depois que estiver embutido no site da Projetech:
@@ -1179,39 +1180,74 @@ $('segSpeed').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   b.classList.add('on'); effectSpeed=b.dataset.s; updVdurLabel();
 });
 /* ===== Exportar vídeo (WebM/MP4) ===== */
-const videoOK = (typeof MediaRecorder!=='undefined') && !!HTMLCanvasElement.prototype.captureStream;
+const webCodecsOK = (typeof VideoEncoder!=='undefined') && (typeof VideoFrame!=='undefined') && (typeof Mp4Muxer!=='undefined');
+const recorderOK = (typeof MediaRecorder!=='undefined') && !!HTMLCanvasElement.prototype.captureStream;
+const videoOK = webCodecsOK || recorderOK;
 if(videoOK) $('tiVideo').style.display='';
 function updVdurLabel(){ const n=+$('videoLoops').value||5; $('vdurVal').textContent=`${n} (≈ ${(n*glowPeriod()/1000).toFixed(1).replace('.',',')} s)`; }
 $('videoLoops').addEventListener('input',updVdurLabel);
 updVdurLabel();
-$('tiVideo').onclick=()=>{
+function saveVideoBlob(blob, ext){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  const tit=$('tiTitle').value.trim();
+  a.download=`${tit?tit+' - ':''}${pmeta.totPxW} x ${pmeta.totPxH} - Projetech Calculator.${ext}`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+}
+async function pickCodec(W,H,fps){
+  const list=['avc1.4D0028','avc1.42002A','avc1.4D002A','avc1.640028','avc1.64002A','avc1.640033','avc1.640034'];
+  for(const c of list){ try{ const s=await VideoEncoder.isConfigSupported({codec:c,width:W,height:H,bitrate:8000000,framerate:fps,avc:{format:'avc'}}); if(s.supported) return c; }catch(e){} }
+  return null;
+}
+// MP4 H.264 "de verdade" (não fragmentado, moov na frente) — abre direto no Alley/Resolume
+async function encodeMp4(btn){
+  const cv=$('tiCanvas'), W=cv.width, H=cv.height, fps=30;
+  const loops=(+$('videoLoops').value||3), period=glowPeriod();
+  const fpl=Math.max(1,Math.round(period*fps/1000)), total=loops*fpl;
+  const codec=await pickCodec(W,H,fps); if(!codec) throw new Error('sem codec H.264');
+  stopAnim(); drawTest();                              // atualiza baseCv
+  const bitrate=Math.min(60000000, Math.max(8000000, Math.round(W*H*fps*0.2)));
+  const muxer=new Mp4Muxer.Muxer({ target:new Mp4Muxer.ArrayBufferTarget(), video:{codec:'avc',width:W,height:H,frameRate:fps}, fastStart:'in-memory' });
+  const encoder=new VideoEncoder({ output:(chunk,meta)=>muxer.addVideoChunk(chunk,meta), error:e=>console.error('encoder',e) });
+  encoder.configure({codec,width:W,height:H,bitrate,framerate:fps,avc:{format:'avc'}});
+  const ctx=cv.getContext('2d');
+  for(let i=0;i<total;i++){
+    while(encoder.encodeQueueSize>8){ await new Promise(r=>setTimeout(r,1)); }
+    ctx.drawImage(baseCv,0,0);
+    drawGlow(ctx,W,H,(i%fpl)/fpl*period);
+    const frame=new VideoFrame(cv,{timestamp:Math.round(i*1e6/fps),duration:Math.round(1e6/fps)});
+    encoder.encode(frame,{keyFrame:i%fps===0}); frame.close();
+    if(i%4===0) btn.textContent=`● Gerando… ${Math.round(i/total*100)}%`;
+  }
+  await encoder.flush(); muxer.finalize();
+  saveVideoBlob(new Blob([muxer.target.buffer],{type:'video/mp4'}),'mp4');
+}
+// Fallback WebM (aparelho sem WebCodecs) — grava em tempo real, precisa converter depois
+function recordWebM(){
+  return new Promise((resolve,reject)=>{
+    const cv=$('tiCanvas');
+    const cands=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4;codecs=h264','video/mp4'];
+    const mime=cands.find(m=>MediaRecorder.isTypeSupported(m))||'';
+    const ext=mime.includes('mp4')?'mp4':'webm';
+    let rec; try{ rec=new MediaRecorder(cv.captureStream(30), mime?{mimeType:mime,videoBitsPerSecond:12000000}:undefined); }catch(e){ reject(e); return; }
+    const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>{ saveVideoBlob(new Blob(chunks,{type:mime||'video/webm'}),ext); resolve(); };
+    const durMs=(+$('videoLoops').value||3)*glowPeriod();
+    glowT0=performance.now(); startAnim();
+    rec.start(); setTimeout(()=>rec.stop(), durMs);
+  });
+}
+$('tiVideo').onclick=async()=>{
   const cv=$('tiCanvas'); if(!cv.width || !videoOK) return;
-  if(effect!=='glow'){ $('segEffect').querySelector('[data-e="glow"]').click(); }   // vídeo precisa do movimento
-  // WebM é o output mais "limpo"/convertível do navegador; MP4 do MediaRecorder sai fragmentado (Resolume/Alley não leem)
-  const cands=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4;codecs=h264','video/mp4'];
-  const mime=cands.find(m=>MediaRecorder.isTypeSupported(m))||'';
-  const ext=mime.includes('mp4')?'mp4':'webm';
-  const stream=cv.captureStream(30);
-  let rec; try{ rec=new MediaRecorder(stream, mime?{mimeType:mime,videoBitsPerSecond:12000000}:undefined); }
-  catch(e){ alert('Seu navegador não suporta gerar vídeo. Use no computador, ou grave a tela.'); return; }
-  const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
-  const btn=$('tiVideo'), lbl=btn.textContent;
-  rec.onstop=()=>{
-    const blob=new Blob(chunks,{type:mime||'video/webm'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-    const tit=$('tiTitle').value.trim();
-    a.download=`${tit?tit+' - ':''}${pmeta.totPxW} x ${pmeta.totPxH} - Projetech Calculator.${ext}`;
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
-    btn.textContent=lbl; btn.disabled=false;
-  };
-  btn.disabled=true;
-  const loops=(+$('videoLoops').value||5), period=glowPeriod();
-  const durMs=loops*period;                          // fecha exatamente no fim do último loop
-  glowT0=performance.now();                           // reinicia o efeito no ponto 0 (emenda perfeita)
-  let left=Math.round(durMs/1000); btn.textContent=`● Gravando… ${left}s`;
-  const tick=setInterval(()=>{ left--; if(left>0) btn.textContent=`● Gravando… ${left}s`; },1000);
-  rec.start();
-  setTimeout(()=>{ clearInterval(tick); rec.stop(); }, durMs);
+  if(effect!=='glow'){ $('segEffect').querySelector('[data-e="glow"]').click(); await new Promise(r=>setTimeout(r,60)); }
+  const btn=$('tiVideo'), lbl='⬇ Baixar vídeo';
+  btn.disabled=true; btn.textContent='● Preparando…';
+  try{
+    let codec=null;
+    if(webCodecsOK){ try{ codec=await pickCodec(cv.width,cv.height,30); }catch(e){} }
+    if(codec){ await encodeMp4(btn); }
+    else { btn.textContent='● Gravando…'; await recordWebM(); }
+  }catch(e){ console.error(e); alert('Não consegui gerar o vídeo neste aparelho. Tente no Chrome do computador.'); }
+  btn.textContent=lbl; btn.disabled=false; startAnim();
 };
 $('segBg').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segBg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
