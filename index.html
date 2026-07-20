@@ -536,6 +536,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <button class="btn btn-primary" id="tiDownload" style="flex:1">⬇ Baixar PNG</button>
         <button class="btn btn-ghost" id="tiVideo" style="flex:1;display:none">⬇ Baixar vídeo</button>
       </div>
+      <div class="hint" id="videoFmtHint" style="display:none"></div>
       <div class="field" id="videoDurWrap" style="display:none;margin-top:10px">
         <label>Loops do efeito no vídeo <span id="vdurVal" style="color:var(--mut2)">1</span></label>
         <input type="range" id="videoLoops" min="1" max="10" value="1" style="width:100%">
@@ -1140,6 +1141,20 @@ function drawTest(){
   $('tiInfo').textContent=`Imagem: ${fmt(W)} × ${fmt(H)} px`;
   // guarda o padrão base (sem efeito) num canvas offscreen p/ a animação reaproveitar
   baseCv.width=W; baseCv.height=H; baseCtx.clearRect(0,0,W,H); baseCtx.drawImage(cv,0,0);
+  scheduleVideoHint();
+}
+/* aviso de formato do vídeo: MP4 tem limite de pixels — acima disso sai WebM */
+let vfhT=null;
+function scheduleVideoHint(){ clearTimeout(vfhT); vfhT=setTimeout(updateVideoHint,400); }
+async function updateVideoHint(){
+  const el=$('videoFmtHint'); if(!el) return;
+  const cv=$('tiCanvas');
+  if(!videoOK || !cv.width){ el.style.display='none'; return; }
+  let mp4ok=false;
+  if(webCodecsOK){ try{ mp4ok=!!(await pickCodec(cv.width,cv.height,30)); }catch(e){} }
+  if(mp4ok){ el.style.display='none'; return; }
+  el.innerHTML=`⚠️ O vídeo MP4 (H.264) suporta até ≈9,4 milhões de pixels por quadro (~8.688 px por lado). Este painel tem <b>${fmt(cv.width)} × ${fmt(cv.height)} px</b> (${fmt(cv.width*cv.height/1e6,1)} mi) — o vídeo será baixado em <b>WebM</b>, que não abre no Alley/Resolume: converta antes para MP4 (ex.: HandBrake/FFmpeg).`;
+  el.style.display='';
 }
 /* ===== Efeito animado (Glow explodindo) por cima do teste ===== */
 const baseCv=document.createElement('canvas'), baseCtx=baseCv.getContext('2d');
