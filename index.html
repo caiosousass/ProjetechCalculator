@@ -1194,27 +1194,28 @@ function saveVideoBlob(blob, ext){
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
 }
 async function pickCodec(W,H,fps){
-  const list=['avc1.4D0028','avc1.42002A','avc1.4D002A','avc1.640028','avc1.64002A','avc1.640033','avc1.640034'];
+  // do nível menor ao maior — inclui Level 6.0/6.1/6.2 (até 16880px/lado, 35,6 MP) p/ painéis grandes
+  const list=['avc1.4D0028','avc1.42002A','avc1.4D002A','avc1.640028','avc1.64002A','avc1.640033','avc1.640034','avc1.640040','avc1.640041','avc1.640042'];
   for(const c of list){ try{ const s=await VideoEncoder.isConfigSupported({codec:c,width:W,height:H,bitrate:8000000,framerate:fps,avc:{format:'avc'}}); if(s.supported) return c; }catch(e){} }
   return null;
 }
-// MP4 H.264 "de verdade" (não fragmentado, moov na frente) — abre direto no Alley/Resolume
+// MP4 H.264 "de verdade" (não fragmentado, moov na frente) — abre direto no Alley/Resolume — resolução NATIVA
 async function encodeMp4(btn){
   const cv=$('tiCanvas'), W=cv.width, H=cv.height, fps=30;
-  const loops=(+$('videoLoops').value||3), period=glowPeriod();
+  const loops=(+$('videoLoops').value||1), period=glowPeriod();
   const fpl=Math.max(1,Math.round(period*fps/1000)), total=loops*fpl;
   const codec=await pickCodec(W,H,fps); if(!codec) throw new Error('sem codec H.264');
   stopAnim(); drawTest();                              // atualiza baseCv
-  const bitrate=Math.min(60000000, Math.max(8000000, Math.round(W*H*fps*0.2)));
+  const enc=document.createElement('canvas'); enc.width=W; enc.height=H; const ectx=enc.getContext('2d');
+  const bitrate=Math.min(100000000, Math.max(8000000, Math.round(W*H*fps*0.2)));
   const muxer=new Mp4Muxer.Muxer({ target:new Mp4Muxer.ArrayBufferTarget(), video:{codec:'avc',width:W,height:H,frameRate:fps}, fastStart:'in-memory' });
   const encoder=new VideoEncoder({ output:(chunk,meta)=>muxer.addVideoChunk(chunk,meta), error:e=>console.error('encoder',e) });
   encoder.configure({codec,width:W,height:H,bitrate,framerate:fps,avc:{format:'avc'}});
-  const ctx=cv.getContext('2d');
   for(let i=0;i<total;i++){
     while(encoder.encodeQueueSize>8){ await new Promise(r=>setTimeout(r,1)); }
-    ctx.drawImage(baseCv,0,0);
-    drawGlow(ctx,W,H,(i%fpl)/fpl*period);
-    const frame=new VideoFrame(cv,{timestamp:Math.round(i*1e6/fps),duration:Math.round(1e6/fps)});
+    ectx.drawImage(baseCv,0,0);
+    drawGlow(ectx,W,H,(i%fpl)/fpl*period);
+    const frame=new VideoFrame(enc,{timestamp:Math.round(i*1e6/fps),duration:Math.round(1e6/fps)});
     encoder.encode(frame,{keyFrame:i%fps===0}); frame.close();
     if(i%4===0) btn.textContent=`● Gerando… ${Math.round(i/total*100)}%`;
   }
