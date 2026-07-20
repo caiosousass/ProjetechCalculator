@@ -1187,7 +1187,8 @@ updVdurLabel();
 $('tiVideo').onclick=()=>{
   const cv=$('tiCanvas'); if(!cv.width || !videoOK) return;
   if(effect!=='glow'){ $('segEffect').querySelector('[data-e="glow"]').click(); }   // vídeo precisa do movimento
-  const cands=['video/mp4;codecs=h264','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  // WebM é o output mais "limpo"/convertível do navegador; MP4 do MediaRecorder sai fragmentado (Resolume/Alley não leem)
+  const cands=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4;codecs=h264','video/mp4'];
   const mime=cands.find(m=>MediaRecorder.isTypeSupported(m))||'';
   const ext=mime.includes('mp4')?'mp4':'webm';
   const stream=cv.captureStream(30);
