@@ -196,6 +196,19 @@ details.sector-res[open] summary::before{transform:rotate(90deg)}
 .sector-summary{display:none;font-size:12px;color:var(--acc2);font-weight:700}
 .sector.collapsed .sector-summary{display:inline}
 .sector.collapsed .sector-body{display:none}
+/* Pixel Map · Slices */
+.slice{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--bg2)}
+.slice-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.slice-head .sl-name{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:8px;font-weight:700;font-size:15px;color:var(--txt);padding:4px 6px}
+.slice-head .sl-name:focus{border-color:var(--line);background:var(--card)}
+.slice-head .sl-res{font-size:12px;color:var(--acc2);font-weight:700;white-space:nowrap}
+.slice-head .sl-del{width:30px;height:30px;border-radius:8px;background:var(--card);border:1px solid var(--line);color:var(--danger);cursor:pointer;font-size:18px;flex:0 0 auto;line-height:1}
+.slice-collapse{background:none;border:0;color:var(--mut);font-size:14px;cursor:pointer;padding:0 2px;line-height:1;transition:transform .15s;flex:0 0 auto}
+.slice.collapsed .slice-collapse{transform:rotate(-90deg)}
+.slice.collapsed .slice-body{display:none}
+.sl-mini label{display:block;font-size:10px;color:var(--mut2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.sl-mini input{width:100%;padding:10px;font-size:15px}
+.slice-vis{margin-top:12px;display:grid;place-items:center;padding:12px;background:var(--bg2);border-radius:12px;border:1px solid var(--line)}
 /* Iluminação · DMX */
 .fx{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--card)}
 .fx .fx-name{width:100%;margin-bottom:8px;font-size:14px}
@@ -308,6 +321,14 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
 
     <div id="pixelSpec">
     <div class="card">
+      <div class="seg" id="segPixMode">
+        <button data-m="single" class="on">Canvas único</button>
+        <button data-m="slices">Slices</button>
+      </div>
+    </div>
+
+    <div id="pxSingle">
+    <div class="card">
       <h3>Gabinete</h3>
       <div class="field">
         <label>Modelo</label>
@@ -362,6 +383,34 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         </div>
       </div>
       <div class="aspect-vis"><svg id="aspectSvg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Painel com pessoa de referência"></svg></div>
+    </div>
+    </div>
+
+    <div id="pxSlices" style="display:none">
+    <div class="card">
+      <h3>Canvas (saída da processadora)</h3>
+      <div class="row">
+        <div class="field"><label>Largura</label><div class="suffix"><input type="text" id="cvW" value="1920" inputmode="numeric"><span>px</span></div></div>
+        <div class="field"><label>Altura</label><div class="suffix"><input type="text" id="cvH" value="1080" inputmode="numeric"><span>px</span></div></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="cvAuto" style="width:100%;margin-top:10px">Auto (ajustar aos slices)</button>
+    </div>
+
+    <div class="card">
+      <h3>Slices</h3>
+      <div id="sliceList"></div>
+      <button class="btn btn-ghost btn-sm" id="addSlice" style="width:100%">+ Adicionar slice</button>
+    </div>
+
+    <div class="card">
+      <h3>Composição</h3>
+      <div class="slice-vis"><svg id="sliceSvg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Canvas com os slices posicionados"></svg></div>
+      <div class="hint" id="sliceHint"></div>
+    </div>
+
+    <div class="card">
+      <h3>Resultado geral</h3>
+      <div class="results" id="sliceTotal"></div>
     </div>
     </div>
 
@@ -1449,6 +1498,121 @@ function syncPreset(){
 }
 ['mpxw','mpxh','mw','mh'].forEach(id=>$(id).addEventListener('input',syncPreset));
 applyPanel();
+
+/* ===== Pixel Map · SLICES (vários pixel maps num canvas) ===== */
+let pixMode='single', sliceSeq=0;
+const panelOpts=()=>{ const g={}; PANELS.forEach((p,i)=>{ (g[p.g]=g[p.g]||[]).push(i); });
+  let h=''; for(const k in g) h+=`<optgroup label="${k}">`+g[k].map(i=>`<option value="${i}">${PANELS[i].n}</option>`).join('')+`</optgroup>`; return h; };
+function sliceItem(){
+  const div=document.createElement('div'); div.className='slice';
+  div.innerHTML=`<div class="slice-head">
+      <button class="slice-collapse" title="Recolher/expandir">▾</button>
+      <input class="sl-name" value="Slice ${++sliceSeq}">
+      <span class="sl-res"></span>
+      <button class="sl-del" title="Remover">×</button>
+    </div>
+    <div class="slice-body">
+      <div class="field"><label>Modelo</label><select class="sl-model">${panelOpts()}</select></div>
+      <div class="row" style="margin-top:12px">
+        <div class="field sl-mini"><label>Largura</label><div class="suffix"><input class="sl-w" type="text" value="3" inputmode="decimal"><span>m</span></div></div>
+        <div class="field sl-mini"><label>Altura</label><div class="suffix"><input class="sl-h" type="text" value="3" inputmode="decimal"><span>m</span></div></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field sl-mini"><label>Posição X</label><div class="suffix"><input class="sl-x" type="text" value="0" inputmode="numeric"><span>px</span></div></div>
+        <div class="field sl-mini"><label>Posição Y</label><div class="suffix"><input class="sl-y" type="text" value="0" inputmode="numeric"><span>px</span></div></div>
+      </div>
+      <div class="results sl-out" style="margin-top:12px"></div>
+    </div>`;
+  div.querySelector('.sl-model').value='7';                       // padrão: Polaris V10 P2.9
+  div.querySelector('.slice-collapse').onclick=()=>div.classList.toggle('collapsed');
+  div.querySelector('.sl-del').onclick=()=>{ div.remove(); calcSlices(); };
+  div.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',calcSlices));
+  div.querySelector('.sl-model').addEventListener('change',calcSlices);
+  return div;
+}
+function sliceData(el){
+  const p=PANELS[+el.querySelector('.sl-model').value]||PANELS[7];
+  const wM=parseFloat(el.querySelector('.sl-w').value)||0, hM=parseFloat(el.querySelector('.sl-h').value)||0;
+  const cols=p.w>0?Math.round(wM/p.w):0, rows=p.h>0?Math.round(hM/p.h):0;
+  return { el, p, name:el.querySelector('.sl-name').value.trim()||'Slice',
+    cols, rows, gab:cols*rows,
+    pxW:cols*p.rw, pxH:rows*p.rh, mW:cols*p.w, mH:rows*p.h,
+    x:parseInt(el.querySelector('.sl-x').value)||0, y:parseInt(el.querySelector('.sl-y').value)||0 };
+}
+function calcSlices(){
+  if(!$('sliceList')) return;
+  const S=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  const list=[...document.querySelectorAll('#sliceList .slice')].map(sliceData);
+  let tGab=0,tPx=0,tKg=0,tAvg=0,tMax=0,tCase=0;
+  list.forEach(s=>{
+    s.el.querySelector('.sl-res').textContent = s.gab? `${fmt(s.pxW)}×${fmt(s.pxH)} px` : '—';
+    s.el.querySelector('.sl-out').innerHTML =
+      S('Resolução', `${fmt(s.pxW)}×${fmt(s.pxH)}<small> px</small>`,'hi full')+
+      S('Dimensão real', `${fmt(s.mW,2)} × ${fmt(s.mH,2)}<small> m</small>`)+
+      S('Gabinetes', `${fmt(s.gab)}<small> un</small> <small style="color:var(--mut2)">(${s.cols}×${s.rows})</small>`);
+    tGab+=s.gab; tPx+=s.pxW*s.pxH;
+    if(s.p.kg!=null) tKg+=s.gab*s.p.kg;
+    if(s.p.avg!=null) tAvg+=s.gab*s.p.avg;
+    if(s.p.max!=null) tMax+=s.gab*s.p.max;
+    if(s.p.pc) tCase+=Math.ceil(s.gab/s.p.pc);
+  });
+  const cw=parseInt($('cvW').value)||0, ch=parseInt($('cvH').value)||0;
+  let html=S('Canvas', `${fmt(cw)}×${fmt(ch)}<small> px</small>`,'hi full')
+    + S('Slices', `${fmt(list.length)}<small> un</small>`)
+    + S('Gabinetes', `${fmt(tGab)}<small> un</small>`);
+  if(tCase) html+=S('Cases', `${fmt(tCase)}<small> un</small>`);
+  html+=S('Pixels dos slices', `${fmt(tPx)}<small> px</small>`);
+  if(tKg) html+=S('Peso total (apenas gabinetes)', `${fmt(tKg,1)}<small> kg</small>`);
+  if(tAvg) html+=S('Consumo médio', `${fmt(tAvg/1000,2)}<small> kW</small>`);
+  if(tMax) html+=S('Consumo máximo', `${fmt(tMax/1000,2)}<small> kW</small>`);
+  $('sliceTotal').innerHTML=html;
+  drawSliceMap(list,cw,ch);
+}
+function drawSliceMap(list,cw,ch){
+  const svg=$('sliceSvg'); if(!svg) return;
+  if(!(cw>0)||!(ch>0)){ svg.innerHTML=''; $('sliceHint').textContent='Defina o canvas.'; return; }
+  const W=520, H=Math.max(90,Math.round(W*ch/cw));
+  const k=W/cw, fx=n=>(+n).toFixed(1);
+  let body=`<rect x="0" y="0" width="${W}" height="${H}" rx="4" fill="#05101c" stroke="#26325a"/>`;
+  let fora=0;
+  list.forEach((s,i)=>{
+    if(!s.gab) return;
+    const x=s.x*k, y=s.y*k, w=s.pxW*k, h=s.pxH*k;
+    if(s.x<0||s.y<0||s.x+s.pxW>cw||s.y+s.pxH>ch) fora++;
+    const c=['#3d7bff','#22d3ee','#22c55e','#f59e0b','#a855f7','#ef4444'][i%6];
+    body+=`<rect x="${fx(x)}" y="${fx(y)}" width="${fx(w)}" height="${fx(h)}" rx="2" fill="${c}" fill-opacity=".18" stroke="${c}" stroke-width="1.5"/>`;
+    if(w>52&&h>26) body+=`<text x="${fx(x+w/2)}" y="${fx(y+h/2-3)}" fill="#e6ecf5" font-size="10" font-weight="700" text-anchor="middle">${s.name}</text>`
+      +`<text x="${fx(x+w/2)}" y="${fx(y+h/2+9)}" fill="#93a0c7" font-size="8.5" text-anchor="middle">${fmt(s.pxW)}×${fmt(s.pxH)} · X${fmt(s.x)} Y${fmt(s.y)}</text>`;
+  });
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W); svg.setAttribute('height',H);
+  svg.style.maxWidth='100%'; svg.style.height='auto';
+  svg.innerHTML=body;
+  $('sliceHint').innerHTML = fora
+    ? `⚠️ ${fora} slice(s) fora do canvas — ajuste a posição ou o tamanho do canvas.`
+    : `Posicione pelo X/Y de cada slice — é o mesmo patch que você usa na processadora.`;
+}
+$('addSlice').onclick=()=>{ $('sliceList').appendChild(sliceItem()); calcSlices(); };
+['cvW','cvH'].forEach(id=>$(id).addEventListener('input',calcSlices));
+$('cvAuto').onclick=()=>{
+  const list=[...document.querySelectorAll('#sliceList .slice')].map(sliceData).filter(s=>s.gab);
+  if(!list.length) return;
+  $('cvW').value=Math.max(...list.map(s=>s.x+s.pxW));
+  $('cvH').value=Math.max(...list.map(s=>s.y+s.pxH));
+  calcSlices();
+};
+$('segPixMode').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segPixMode').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); pixMode=b.dataset.m;
+  $('pxSingle').style.display = pixMode==='single'?'':'none';
+  $('pxSlices').style.display = pixMode==='slices'?'':'none';
+  if(pixMode==='slices' && !document.querySelector('#sliceList .slice')){
+    $('sliceList').appendChild(sliceItem()); $('sliceList').appendChild(sliceItem());
+    const s2=document.querySelectorAll('#sliceList .slice')[1];
+    s2.querySelector('.sl-x').value='1008';                        // 2º slice já encostado no 1º
+    $('cvW').value='2016'; $('cvH').value='1008';
+  }
+  calcSlices();
+});
 
 /* abas do Pixel Map (Especificações · Pixel Map) */
 $('segPixel').querySelectorAll('button').forEach(b=>b.onclick=()=>{
