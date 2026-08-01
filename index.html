@@ -413,6 +413,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="results" id="sliceTotal"></div>
     </div>
     </div>
+    </div>
 
     <div id="pixelMap" style="display:none">
     <div class="card">
@@ -980,6 +981,7 @@ function calcPixel(){
   drawTest();
 }
 let showPerson=true, personHeight=1.7;
+let pixMode='single';                 // 'single' (canvas único) ou 'slices' — usado já no drawTest
 let pmeta={};
 let curBg='grad';
 let infoSize=0.03, infoAlign='center', infoWeight='400';
@@ -1071,10 +1073,13 @@ $('personH').addEventListener('input',()=>{personHeight=parseFloat($('personH').
 // ===== Gerador de imagem de teste (PNG na resolução do painel) =====
 let logoRect=null, infoRect=null, dragEl=null;   // retângulos desenhados (px da imagem) + estado do arrasto
 let snapG={v:null,h:null};          // linhas-guia do snap magnético (x/y em px da imagem, null = sem snap)
-function drawTest(){
-  const cv=$('tiCanvas'); if(!cv||!pmeta.totPxW) return;
-  const {totPxW:W,totPxH:H,cols,rows,pxw,pxh}=pmeta;
-  if(!(W>0)||!(H>0)||!(cols>0)||!(rows>0)){$('tiInfo').textContent='Ajuste a dimensão para gerar a imagem.';return;}
+function drawTest(target, meta){
+  if(!target && pixMode==='slices') return drawTestSlices();      // modo Slices: composição do canvas
+  const isMain=!target;
+  const cv=target||$('tiCanvas'); const M=meta||pmeta;
+  if(!cv||!M.totPxW) return;
+  const {totPxW:W,totPxH:H,cols,rows,pxw,pxh}=M;
+  if(!(W>0)||!(H>0)||!(cols>0)||!(rows>0)){ if(isMain) $('tiInfo').textContent='Ajuste a dimensão para gerar a imagem.'; return; }
   cv.width=W; cv.height=H;
   const ctx=cv.getContext('2d');
   const color=$('tiColor').value;
@@ -1129,12 +1134,12 @@ function drawTest(){
     }
   }
   // info: bloco centralizado multilinha (título maior · resolução · medida em m)
-  infoRect=null;
+  if(isMain) infoRect=null;
   if(tiOpts.info){
     const fs=Math.max(12,Math.min(W,H)*infoSize);
     const font=$('tiInfoFont').value;
-    const tit=$('tiTitle').value.trim();
-    const wM=cols*(+$('mw').value||0), hM=rows*(+$('mh').value||0);
+    const tit=(M.title!=null) ? M.title : $('tiTitle').value.trim();     // no slice, o nome do slice
+    const wM=(M.mW!=null)?M.mW:cols*(+$('mw').value||0), hM=(M.mH!=null)?M.mH:rows*(+$('mh').value||0);
     const lines=[];
     if(tit) lines.push({t:tit, s:fs*1.8});                          // título maior
     lines.push({t:`${W} × ${H} px`, s:fs*0.8});                     // resolução menor
@@ -1156,10 +1161,10 @@ function drawTest(){
     let cy=y;
     lines.forEach(ln=>{ ctx.font=`${infoWeight} ${ln.s.toFixed(0)}px ${font}`; ctx.fillText(ln.t, ax, cy); cy+=ln.s*1.02+gap; });
     ctx.restore();
-    infoRect={x,y,w:bw,h:bh};
+    if(isMain) infoRect={x,y,w:bw,h:bh};
   }
   // logo
-  logoRect=null;
+  if(isMain) logoRect=null;
   if(tiOpts.logo){
     const lg=activeLogo();
     if(lg && lg.complete && lg.naturalWidth){
@@ -1169,11 +1174,11 @@ function drawTest(){
       else if(logoPos==='center'){ x=(W-lw)/2; y=(H-lh)/2; }
       else{ x=logoPos.includes('l')?m:(W-lw-m); y=logoPos.includes('t')?m:(H-lh-m); }
       ctx.drawImage(lg,x,y,lw,lh);
-      logoRect={x,y,w:lw,h:lh};
+      if(isMain) logoRect={x,y,w:lw,h:lh};
     }
   }
   // linhas-guia do snap (só enquanto arrasta o logo — nunca vão pro PNG baixado)
-  if(dragEl && (snapG.v!=null || snapG.h!=null)){
+  if(isMain && dragEl && (snapG.v!=null || snapG.h!=null)){
     ctx.save();
     ctx.setLineDash([Math.max(4,W*0.012),Math.max(3,W*0.008)]);
     ctx.strokeStyle='#22d3ee'; ctx.lineWidth=Math.max(1,W*0.0025);
@@ -1187,9 +1192,30 @@ function drawTest(){
     ctx.strokeStyle=$('borderColor').value; ctx.lineWidth=bw;
     ctx.strokeRect(bw/2,bw/2,W-bw,H-bw);
   }
+  if(!isMain) return;
   $('tiInfo').textContent=`Imagem: ${fmt(W)} × ${fmt(H)} px`;
   // guarda o padrão base (sem efeito) num canvas offscreen p/ a animação reaproveitar
   baseCv.width=W; baseCv.height=H; baseCtx.clearRect(0,0,W,H); baseCtx.drawImage(cv,0,0);
+  scheduleVideoHint();
+}
+/* modo Slices: desenha o padrão de teste de cada slice na sua posição dentro do canvas geral */
+function drawTestSlices(){
+  const cv=$('tiCanvas'); if(!cv) return;
+  const cw=parseInt($('cvW').value)||0, ch=parseInt($('cvH').value)||0;
+  const list=[...document.querySelectorAll('#sliceList .slice')].map(sliceData).filter(s=>s.gab>0);
+  if(!(cw>0)||!(ch>0)||!list.length){ $('tiInfo').textContent='Defina o canvas e ao menos um slice.'; return; }
+  cv.width=cw; cv.height=ch;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,cw,ch);                  // fora dos slices = preto
+  const off=document.createElement('canvas');
+  list.forEach(s=>{
+    drawTest(off,{totPxW:s.pxW,totPxH:s.pxH,cols:s.cols,rows:s.rows,pxw:s.p.rw,pxh:s.p.rh,mW:s.mW,mH:s.mH,title:s.name});
+    ctx.drawImage(off,s.x,s.y);
+  });
+  logoRect=null; infoRect=null;                                    // arrasto não se aplica ao modo slices
+  pmeta={totPxW:cw,totPxH:ch,cols:0,rows:0,pxw:0,pxh:0,pitch:0};
+  $('tiInfo').textContent=`Canvas: ${fmt(cw)} × ${fmt(ch)} px · ${list.length} slice(s)`;
+  baseCv.width=cw; baseCv.height=ch; baseCtx.clearRect(0,0,cw,ch); baseCtx.drawImage(cv,0,0);
   scheduleVideoHint();
 }
 /* aviso de formato do vídeo: MP4 tem limite de pixels — acima disso sai WebM */
@@ -1500,7 +1526,7 @@ function syncPreset(){
 applyPanel();
 
 /* ===== Pixel Map · SLICES (vários pixel maps num canvas) ===== */
-let pixMode='single', sliceSeq=0;
+let sliceSeq=0;
 const panelOpts=()=>{ const g={}; PANELS.forEach((p,i)=>{ (g[p.g]=g[p.g]||[]).push(i); });
   let h=''; for(const k in g) h+=`<optgroup label="${k}">`+g[k].map(i=>`<option value="${i}">${PANELS[i].n}</option>`).join('')+`</optgroup>`; return h; };
 function sliceItem(){
@@ -1567,6 +1593,7 @@ function calcSlices(){
   if(tMax) html+=S('Consumo máximo', `${fmt(tMax/1000,2)}<small> kW</small>`);
   $('sliceTotal').innerHTML=html;
   drawSliceMap(list,cw,ch);
+  if(pixMode==='slices'){ stopAnim(); drawTest(); startAnim(); }   // atualiza a imagem de teste do conjunto
 }
 function drawSliceMap(list,cw,ch){
   const svg=$('sliceSvg'); if(!svg) return;
@@ -1611,7 +1638,7 @@ $('segPixMode').querySelectorAll('button').forEach(b=>b.onclick=()=>{
     s2.querySelector('.sl-x').value='1008';                        // 2º slice já encostado no 1º
     $('cvW').value='2016'; $('cvH').value='1008';
   }
-  calcSlices();
+  if(pixMode==='slices') calcSlices(); else calcPixel();
 });
 
 /* abas do Pixel Map (Especificações · Pixel Map) */
