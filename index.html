@@ -450,10 +450,11 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         </div>
       </div>
       <details id="tiInfoOpts" class="sector-res" open style="display:none;margin-top:12px"><summary>Configurar info</summary>
-        <div class="field">
+        <div class="field" id="f-ti-title">
           <label>Título do teste <small style="color:var(--mut2)">(opc.)</small></label>
           <input type="text" id="tiTitle" placeholder="Ex.: Painel palco" autocomplete="off">
         </div>
+        <div class="hint" id="sliceTitleHint" style="display:none">O título de cada slice é o nome que você deu nas Especificações.</div>
         <div class="field" style="flex:0 0 auto">
           <label>Cor da info</label>
           <input type="color" id="tiInfoColor" value="#ffffff">
@@ -501,7 +502,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
             <button data-a="right" title="Direita"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg></button>
           </div>
         </div>
-        <div class="field">
+        <div class="field" id="f-info-pos">
           <label>Posição</label>
           <select id="infoPos">
             <option value="center">Centro</option>
@@ -534,7 +535,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           <label>Arquivo do logo (PNG/JPG)</label>
           <input type="file" id="logoFile" accept="image/*">
         </div>
-        <div class="field">
+        <div class="field" id="f-logo-pos">
           <label>Posição</label>
           <select id="logoPos">
             <option value="br">Inferior direita</option>
@@ -1147,7 +1148,7 @@ function drawTest(target, meta){
     const gap=fs*0.3;
     let bw=0, bh=0;
     lines.forEach((ln,i)=>{ ctx.font=`${infoWeight} ${ln.s.toFixed(0)}px ${font}`; bw=Math.max(bw,ctx.measureText(ln.t).width); bh+=ln.s*1.02+(i?gap:0); });
-    const m=Math.max(10,W*0.02), pos=$('infoPos').value;
+    const m=Math.max(10,W*0.02), pos=M.forceCenter?'center':$('infoPos').value;
     let x,y;
     if(pos==='custom'){ x=+$('infoX').value||0; y=+$('infoY').value||0; }
     else if(pos==='center'){ x=(W-bw)/2; y=(H-bh)/2; }
@@ -1169,10 +1170,11 @@ function drawTest(target, meta){
     const lg=activeLogo();
     if(lg && lg.complete && lg.naturalWidth){
       const lw=W*logoSizeFrac, lh=lw*(lg.naturalHeight/lg.naturalWidth), m=Math.max(10,W*0.02);
+      const lpos=M.forceCenter?'center':logoPos;          // no modo slices o logo fica centrado em cada slice
       let x,y;
-      if(logoPos==='custom'){ x=+$('logoX').value||0; y=+$('logoY').value||0; }
-      else if(logoPos==='center'){ x=(W-lw)/2; y=(H-lh)/2; }
-      else{ x=logoPos.includes('l')?m:(W-lw-m); y=logoPos.includes('t')?m:(H-lh-m); }
+      if(lpos==='custom'){ x=+$('logoX').value||0; y=+$('logoY').value||0; }
+      else if(lpos==='center'){ x=(W-lw)/2; y=(H-lh)/2; }
+      else{ x=lpos.includes('l')?m:(W-lw-m); y=lpos.includes('t')?m:(H-lh-m); }
       ctx.drawImage(lg,x,y,lw,lh);
       if(isMain) logoRect={x,y,w:lw,h:lh};
     }
@@ -1198,6 +1200,9 @@ function drawTest(target, meta){
   baseCv.width=W; baseCv.height=H; baseCtx.clearRect(0,0,W,H); baseCtx.drawImage(cv,0,0);
   scheduleVideoHint();
 }
+/* redesenho suave: junta várias mudanças seguidas num único frame (cor/slider ficam instantâneos) */
+let drawReq=null;
+function requestDraw(){ if(drawReq) return; drawReq=requestAnimationFrame(()=>{ drawReq=null; drawTest(); }); }
 /* modo Slices: desenha o padrão de teste de cada slice na sua posição dentro do canvas geral */
 function drawTestSlices(){
   const cv=$('tiCanvas'); if(!cv) return;
@@ -1209,7 +1214,7 @@ function drawTestSlices(){
   ctx.fillStyle='#000'; ctx.fillRect(0,0,cw,ch);                  // fora dos slices = preto
   const off=document.createElement('canvas');
   list.forEach(s=>{
-    drawTest(off,{totPxW:s.pxW,totPxH:s.pxH,cols:s.cols,rows:s.rows,pxw:s.p.rw,pxh:s.p.rh,mW:s.mW,mH:s.mH,title:s.name});
+    drawTest(off,{totPxW:s.pxW,totPxH:s.pxH,cols:s.cols,rows:s.rows,pxw:s.p.rw,pxh:s.p.rh,mW:s.mW,mH:s.mH,title:s.name,forceCenter:true});
     ctx.drawImage(off,s.x,s.y);
   });
   logoRect=null; infoRect=null;                                    // arrasto não se aplica ao modo slices
@@ -1346,7 +1351,7 @@ $('segBg').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('f-color2').style.display = curBg==='checker' ? 'block':'none';
   drawTest();
 });
-$('tiColor2').addEventListener('input',drawTest);
+$('tiColor2').addEventListener('input',requestDraw);
 $('tiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
   const k=b.dataset.opt; tiOpts[k]=!tiOpts[k]; b.classList.toggle('on',tiOpts[k]);
   if(k==='info') $('tiInfoOpts').style.display=tiOpts.info?'block':'none';
@@ -1358,9 +1363,9 @@ $('tiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
 $('borderScale').addEventListener('input',()=>{
   borderPx=+$('borderScale').value;
   $('borderScaleVal').textContent=$('borderScale').value+' px';
-  drawTest();
+  requestDraw();
 });
-$('borderColor').addEventListener('input',drawTest);
+$('borderColor').addEventListener('input',requestDraw);
 $('segLogoSrc').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segLogoSrc').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); logoSource=b.dataset.s;
@@ -1370,14 +1375,14 @@ $('segLogoSrc').querySelectorAll('button').forEach(b=>b.onclick=()=>{
 $('logoScale').addEventListener('input',()=>{
   logoSizeFrac=(+$('logoScale').value)/100;
   $('logoScaleVal').textContent=$('logoScale').value+'%';
-  drawTest();
+  requestDraw();
 });
 $('logoPos').addEventListener('change',()=>{
   logoPos=$('logoPos').value;
   $('logoXYWrap').style.display = logoPos==='custom' ? 'flex' : 'none';
   drawTest();
 });
-['logoX','logoY'].forEach(id=>$(id).addEventListener('input',drawTest));
+['logoX','logoY'].forEach(id=>$(id).addEventListener('input',requestDraw));
 /* arrastar o logo direto no preview (mouse e touch) */
 (function(){
   const cv=$('tiCanvas');
@@ -1430,7 +1435,7 @@ $('logoPos').addEventListener('change',()=>{
   }));
 })();
 $('infoPos').addEventListener('change',()=>{ $('infoXYWrap').style.display = $('infoPos').value==='custom'?'flex':'none'; drawTest(); });
-['infoX','infoY'].forEach(id=>$(id).addEventListener('input',drawTest));
+['infoX','infoY'].forEach(id=>$(id).addEventListener('input',requestDraw));
 $('segInfoAlign').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segInfoAlign').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); infoAlign=b.dataset.a; drawTest();
@@ -1450,12 +1455,12 @@ $('logoFile').addEventListener('change',e=>{
 $('infoScale').addEventListener('input',()=>{
   infoSize=(+$('infoScale').value)/100;
   $('infoScaleVal').textContent=$('infoScale').value+'%';
-  drawTest();
+  requestDraw();
 });
-$('tiColor').addEventListener('input',drawTest);
-$('tiInfoColor').addEventListener('input',drawTest);
+$('tiColor').addEventListener('input',requestDraw);
+$('tiInfoColor').addEventListener('input',requestDraw);
 $('tiInfoFont').addEventListener('change',drawTest);
-$('tiTitle').addEventListener('input',drawTest);
+$('tiTitle').addEventListener('input',requestDraw);
 $('tiDownload').onclick=()=>{
   const cv=$('tiCanvas'); if(!cv.width) return;
   const wasGlow = effect==='glow';
@@ -1664,8 +1669,23 @@ $('segPixMode').querySelectorAll('button').forEach(b=>b.onclick=()=>{
     s2.querySelector('.sl-x').value='1008';                        // 2º slice já encostado no 1º
     $('cvW').value='2016'; $('cvH').value='1008';
   }
+  applyModeUI();
   if(pixMode==='slices') calcSlices(); else calcPixel();
 });
+/* no modo Slices: título vem do nome do slice e logo/info ficam centrados em cada slice */
+function applyModeUI(){
+  const sl = pixMode==='slices';
+  $('f-ti-title').style.display   = sl?'none':'';
+  $('sliceTitleHint').style.display = sl?'':'none';
+  $('f-info-pos').style.display   = sl?'none':'';
+  $('f-logo-pos').style.display   = sl?'none':'';
+  if(sl){ $('infoXYWrap').style.display='none'; $('logoXYWrap').style.display='none'; }
+  else{
+    $('infoXYWrap').style.display = $('infoPos').value==='custom'?'flex':'none';
+    $('logoXYWrap').style.display = logoPos==='custom'?'flex':'none';
+  }
+}
+applyModeUI();
 
 /* abas do Pixel Map (Especificações · Pixel Map) */
 $('segPixel').querySelectorAll('button').forEach(b=>b.onclick=()=>{
