@@ -1528,7 +1528,8 @@ applyPanel();
 /* ===== Pixel Map · SLICES (vários pixel maps num canvas) ===== */
 let sliceSeq=0;
 const panelOpts=()=>{ const g={}; PANELS.forEach((p,i)=>{ (g[p.g]=g[p.g]||[]).push(i); });
-  let h=''; for(const k in g) h+=`<optgroup label="${k}">`+g[k].map(i=>`<option value="${i}">${PANELS[i].n}</option>`).join('')+`</optgroup>`; return h; };
+  let h=''; for(const k in g) h+=`<optgroup label="${k}">`+g[k].map(i=>`<option value="${i}">${PANELS[i].n}</option>`).join('')+`</optgroup>`;
+  return h+`<option value="custom">Personalizado</option>`; };
 function sliceItem(){
   const div=document.createElement('div'); div.className='slice';
   div.innerHTML=`<div class="slice-head">
@@ -1539,6 +1540,20 @@ function sliceItem(){
     </div>
     <div class="slice-body">
       <div class="field"><label>Modelo</label><select class="sl-model">${panelOpts()}</select></div>
+      <div class="sl-custom" style="display:none">
+        <div class="row" style="margin-top:12px">
+          <div class="field sl-mini"><label>Gabinete L</label><div class="suffix"><input class="sl-gw" type="text" value="0.5" inputmode="decimal"><span>m</span></div></div>
+          <div class="field sl-mini"><label>Gabinete A</label><div class="suffix"><input class="sl-gh" type="text" value="0.5" inputmode="decimal"><span>m</span></div></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field sl-mini"><label>Resolução H</label><div class="suffix"><input class="sl-rw" type="text" value="168" inputmode="numeric"><span>px</span></div></div>
+          <div class="field sl-mini"><label>Resolução V</label><div class="suffix"><input class="sl-rh" type="text" value="168" inputmode="numeric"><span>px</span></div></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field sl-mini"><label>Peso / gab <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input class="sl-kg" type="text" placeholder="—" inputmode="decimal"><span>kg</span></div></div>
+          <div class="field sl-mini"><label>Consumo máx <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input class="sl-max" type="text" placeholder="—" inputmode="decimal"><span>W</span></div></div>
+        </div>
+      </div>
       <div class="row" style="margin-top:12px">
         <div class="field sl-mini"><label>Largura</label><div class="suffix"><input class="sl-w" type="text" value="3" inputmode="decimal"><span>m</span></div></div>
         <div class="field sl-mini"><label>Altura</label><div class="suffix"><input class="sl-h" type="text" value="3" inputmode="decimal"><span>m</span></div></div>
@@ -1549,15 +1564,26 @@ function sliceItem(){
       </div>
       <div class="results sl-out" style="margin-top:12px"></div>
     </div>`;
-  div.querySelector('.sl-model').value='7';                       // padrão: Polaris V10 P2.9
+  const mSel=div.querySelector('.sl-model');
+  mSel.value='7';                                                 // padrão: Polaris V10 P2.9
+  const syncCustom=()=>{ div.querySelector('.sl-custom').style.display = mSel.value==='custom' ? '' : 'none'; };
+  syncCustom();
   div.querySelector('.slice-collapse').onclick=()=>div.classList.toggle('collapsed');
   div.querySelector('.sl-del').onclick=()=>{ div.remove(); calcSlices(); };
   div.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',calcSlices));
-  div.querySelector('.sl-model').addEventListener('change',calcSlices);
+  mSel.addEventListener('change',()=>{ syncCustom(); calcSlices(); });
   return div;
 }
 function sliceData(el){
-  const p=PANELS[+el.querySelector('.sl-model').value]||PANELS[7];
+  const mv=el.querySelector('.sl-model').value;
+  const num=(c,d)=>{ const v=parseFloat(el.querySelector(c).value); return isFinite(v)?v:d; };
+  const p = mv==='custom'
+    ? { n:'Personalizado', g:'custom', pitch:(num('.sl-gw',0.5)*1000)/Math.max(1,num('.sl-rw',168)),
+        rw:Math.max(1,Math.round(num('.sl-rw',168))), rh:Math.max(1,Math.round(num('.sl-rh',168))),
+        w:num('.sl-gw',0.5), h:num('.sl-gh',0.5),
+        kg:isFinite(parseFloat(el.querySelector('.sl-kg').value))?parseFloat(el.querySelector('.sl-kg').value):null,
+        avg:null, max:isFinite(parseFloat(el.querySelector('.sl-max').value))?parseFloat(el.querySelector('.sl-max').value):null, pc:null }
+    : (PANELS[+mv]||PANELS[7]);
   const wM=parseFloat(el.querySelector('.sl-w').value)||0, hM=parseFloat(el.querySelector('.sl-h').value)||0;
   const cols=p.w>0?Math.round(wM/p.w):0, rows=p.h>0?Math.round(hM/p.h):0;
   return { el, p, name:el.querySelector('.sl-name').value.trim()||'Slice',
