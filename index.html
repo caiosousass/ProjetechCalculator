@@ -1073,6 +1073,7 @@ $('personH').addEventListener('input',()=>{personHeight=parseFloat($('personH').
 
 // ===== Gerador de imagem de teste (PNG na resolução do painel) =====
 let logoRect=null, infoRect=null, dragEl=null;   // retângulos desenhados (px da imagem) + estado do arrasto
+let sliceRef=null;                                // no modo slices: 1º slice (offset+tamanho) p/ arrastar
 let snapG={v:null,h:null};          // linhas-guia do snap magnético (x/y em px da imagem, null = sem snap)
 function drawTest(target, meta){
   if(!target && pixMode==='slices') return drawTestSlices();      // modo Slices: composição do canvas
@@ -1162,7 +1163,7 @@ function drawTest(target, meta){
     let cy=y;
     lines.forEach(ln=>{ ctx.font=`${infoWeight} ${ln.s.toFixed(0)}px ${font}`; ctx.fillText(ln.t, ax, cy); cy+=ln.s*1.02+gap; });
     ctx.restore();
-    if(isMain) infoRect={x,y,w:bw,h:bh};
+    if(isMain) infoRect={x,y,w:bw,h:bh}; else if(M.__out) M.__out.info={x,y,w:bw,h:bh};
   }
   // logo
   if(isMain) logoRect=null;
@@ -1176,7 +1177,7 @@ function drawTest(target, meta){
       else if(lpos==='center'){ x=(W-lw)/2; y=(H-lh)/2; }
       else{ x=lpos.includes('l')?m:(W-lw-m); y=lpos.includes('t')?m:(H-lh-m); }
       ctx.drawImage(lg,x,y,lw,lh);
-      if(isMain) logoRect={x,y,w:lw,h:lh};
+      if(isMain) logoRect={x,y,w:lw,h:lh}; else if(M.__out) M.__out.logo={x,y,w:lw,h:lh};
     }
   }
   // linhas-guia do snap (só enquanto arrasta o logo — nunca vão pro PNG baixado)
@@ -1213,14 +1214,29 @@ function drawTestSlices(){
   const ctx=cv.getContext('2d');
   ctx.fillStyle='#000'; ctx.fillRect(0,0,cw,ch);                  // fora dos slices = preto
   const off=document.createElement('canvas');
-  list.forEach(s=>{
-    drawTest(off,{totPxW:s.pxW,totPxH:s.pxH,cols:s.cols,rows:s.rows,pxw:s.p.rw,pxh:s.p.rh,mW:s.mW,mH:s.mH,title:s.name,forceCenter:true});
+  logoRect=null; infoRect=null; sliceRef=null;
+  list.forEach((s,i)=>{
+    const o={};
+    drawTest(off,{totPxW:s.pxW,totPxH:s.pxH,cols:s.cols,rows:s.rows,pxw:s.p.rw,pxh:s.p.rh,mW:s.mW,mH:s.mH,title:s.name,__out:o});
     ctx.drawImage(off,s.x,s.y);
+    if(i===0){                                                     // 1º slice vira a referência do arrasto
+      sliceRef={x:s.x,y:s.y,w:s.pxW,h:s.pxH};
+      if(o.logo) logoRect={x:o.logo.x+s.x,y:o.logo.y+s.y,w:o.logo.w,h:o.logo.h};
+      if(o.info) infoRect={x:o.info.x+s.x,y:o.info.y+s.y,w:o.info.w,h:o.info.h};
+    }
   });
-  logoRect=null; infoRect=null;                                    // arrasto não se aplica ao modo slices
   pmeta={totPxW:cw,totPxH:ch,cols:0,rows:0,pxw:0,pxh:0,pitch:0};
   $('tiInfo').textContent=`Canvas: ${fmt(cw)} × ${fmt(ch)} px · ${list.length} slice(s)`;
   baseCv.width=cw; baseCv.height=ch; baseCtx.clearRect(0,0,cw,ch); baseCtx.drawImage(cv,0,0);
+  // linhas-guia do snap só na tela (depois do baseCv, p/ nunca entrarem no PNG/vídeo)
+  if(dragEl && (snapG.v!=null || snapG.h!=null)){
+    ctx.save();
+    ctx.setLineDash([Math.max(4,cw*0.008),Math.max(3,cw*0.005)]);
+    ctx.strokeStyle='#22d3ee'; ctx.lineWidth=Math.max(1,cw*0.0018);
+    if(snapG.v!=null){ ctx.beginPath(); ctx.moveTo(snapG.v,0); ctx.lineTo(snapG.v,ch); ctx.stroke(); }
+    if(snapG.h!=null){ ctx.beginPath(); ctx.moveTo(0,snapG.h); ctx.lineTo(cw,snapG.h); ctx.stroke(); }
+    ctx.restore();
+  }
   scheduleVideoHint();
 }
 /* aviso de formato do vídeo: MP4 tem limite de pixels — acima disso sai WebM */
@@ -1398,9 +1414,10 @@ $('logoPos').addEventListener('change',()=>{
       const R=t.rect();
       if(!t.on()||!R) continue;
       if(p.x>=R.x && p.x<=R.x+R.w && p.y>=R.y && p.y<=R.y+R.h){
+        const off = (pixMode==='slices'&&sliceRef) ? sliceRef : {x:0,y:0};   // slices: X/Y relativos ao slice
         if($(t.sel).value!=='custom'){                    // vira Personalizado mantendo a posição atual
           $(t.sel).value='custom'; $(t.wrap).style.display='flex'; if(t.sel==='logoPos') logoPos='custom';
-          $(t.xf).value=Math.round(R.x); $(t.yf).value=Math.round(R.y);
+          $(t.xf).value=Math.round(R.x-off.x); $(t.yf).value=Math.round(R.y-off.y);
         }
         dragEl={t, dx:p.x-R.x, dy:p.y-R.y};
         try{ cv.setPointerCapture(e.pointerId); }catch(_){}
@@ -1413,19 +1430,21 @@ $('logoPos').addEventListener('change',()=>{
     if(!dragEl) return;
     const R=dragEl.t.rect(); if(!R) return;
     const p=toImg(e);
-    let nx=p.x-dragEl.dx, ny=p.y-dragEl.dy;
+    // no modo slices tudo é relativo ao 1º slice (o ajuste vale pra todos)
+    const off = (pixMode==='slices'&&sliceRef) ? sliceRef : {x:0,y:0,w:cv.width,h:cv.height};
+    let nx=p.x-dragEl.dx-off.x, ny=p.y-dragEl.dy-off.y;
     // snap magnético: centros e bordas (margem dos presets); zona ~12px de tela
-    const W=cv.width, H=cv.height, ew=R.w, eh=R.h, m=Math.max(10,W*0.02);
+    const W=off.w||cv.width, H=off.h||cv.height, ew=R.w, eh=R.h, m=Math.max(10,W*0.02);
     const r=cv.getBoundingClientRect();
     const th=r.width>0 ? 12*cv.width/r.width : 12;
     snapG={v:null,h:null};
     const xt=[{t:m,g:m},{t:(W-ew)/2,g:W/2},{t:W-ew-m,g:W-m}];                 // esquerda · centro · direita
-    for(const s of xt){ if(Math.abs(nx-s.t)<th){ nx=s.t; snapG.v=s.g; break; } }
+    for(const s of xt){ if(Math.abs(nx-s.t)<th){ nx=s.t; snapG.v=s.g+off.x; break; } }
     const yt=[{t:m,g:m},{t:(H-eh)/2,g:H/2},{t:H-eh-m,g:H-m}];                 // topo · centro · base
-    for(const s of yt){ if(Math.abs(ny-s.t)<th){ ny=s.t; snapG.h=s.g; break; } }
+    for(const s of yt){ if(Math.abs(ny-s.t)<th){ ny=s.t; snapG.h=s.g+off.y; break; } }
     $(dragEl.t.xf).value=Math.round(nx);
     $(dragEl.t.yf).value=Math.round(ny);
-    drawTest();
+    requestDraw();
     e.preventDefault();
   });
   ['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,()=>{
@@ -1677,12 +1696,12 @@ function applyModeUI(){
   const sl = pixMode==='slices';
   $('f-ti-title').style.display   = sl?'none':'';
   $('sliceTitleHint').style.display = sl?'':'none';
-  $('f-info-pos').style.display   = sl?'none':'';
-  $('f-logo-pos').style.display   = sl?'none':'';
-  if(sl){ $('infoXYWrap').style.display='none'; $('logoXYWrap').style.display='none'; }
-  else{
-    $('infoXYWrap').style.display = $('infoPos').value==='custom'?'flex':'none';
-    $('logoXYWrap').style.display = logoPos==='custom'?'flex':'none';
+  // posição da info/logo continua ajustável nos slices — vale igual p/ todos
+  $('infoXYWrap').style.display = $('infoPos').value==='custom'?'flex':'none';
+  $('logoXYWrap').style.display = logoPos==='custom'?'flex':'none';
+  if(sl && $('infoPos').value==='center' && logoPos==='center'){
+    $('infoPos').value='bc';                      // evita info em cima do logo ao entrar nos slices
+    $('infoXYWrap').style.display='none';
   }
 }
 applyModeUI();
