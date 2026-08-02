@@ -582,6 +582,14 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           <button data-s="fast">Rápido</button>
         </div>
       </div>
+      <div class="field" id="glowScopeWrap" style="display:none;margin-top:12px">
+        <label>Origem do efeito</label>
+        <div class="seg" id="segGlowScope">
+          <button data-g="slice" class="on">Por slice</button>
+          <button data-g="canvas">Canvas inteiro</button>
+        </div>
+        <div class="hint" style="margin-top:6px">Por slice: cada tela explode do próprio centro, ao mesmo tempo.</div>
+      </div>
       <div class="ti-preview"><canvas id="tiCanvas"></canvas></div>
       <div class="row" style="gap:8px">
         <button class="btn btn-primary" id="tiDownload" style="flex:1">⬇ Baixar PNG</button>
@@ -1215,6 +1223,7 @@ function drawTestSlices(){
   ctx.fillStyle='#000'; ctx.fillRect(0,0,cw,ch);                  // fora dos slices = preto
   const off=document.createElement('canvas');
   logoRect=null; infoRect=null; sliceRef=null;
+  sliceGeom=list.map(s=>({x:s.x,y:s.y,w:s.pxW,h:s.pxH}));          // p/ o glow por slice
   list.forEach((s,i)=>{
     const o={};
     drawTest(off,{totPxW:s.pxW,totPxH:s.pxH,cols:s.cols,rows:s.rows,pxw:s.p.rw,pxh:s.p.rh,mW:s.mW,mH:s.mH,title:s.name,__out:o});
@@ -1255,6 +1264,7 @@ async function updateVideoHint(){
 /* ===== Efeito animado (Glow explodindo) por cima do teste ===== */
 const baseCv=document.createElement('canvas'), baseCtx=baseCv.getContext('2d');
 let effect='none', effectSpeed='med', animId=null, glowT0=0;
+let glowScope='slice', sliceGeom=[];   // 'slice' = 1 explosão por tela (simultâneas) · 'canvas' = 1 só no conjunto
 const hexRgb=h=>{ h=(h||'#ffffff').replace('#',''); if(h.length===3)h=h.split('').map(x=>x+x).join(''); const n=parseInt(h,16); return `${(n>>16)&255},${(n>>8)&255},${n&255}`; };
 const glowPeriod=()=> effectSpeed==='slow'?2800 : effectSpeed==='fast'?1100 : 1900;
 function drawGlow(ctx,W,H,t){
@@ -1270,21 +1280,39 @@ function drawGlow(ctx,W,H,t){
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   ctx.restore();
 }
+/* aplica o glow: por slice (cada tela do próprio centro) ou no canvas inteiro */
+function drawEffect(ctx,W,H,t){
+  if(pixMode==='slices' && glowScope==='slice' && sliceGeom.length){
+    sliceGeom.forEach(g=>{
+      ctx.save(); ctx.beginPath(); ctx.rect(g.x,g.y,g.w,g.h); ctx.clip(); ctx.translate(g.x,g.y);
+      drawGlow(ctx,g.w,g.h,t);
+      ctx.restore();
+    });
+  } else drawGlow(ctx,W,H,t);
+}
 function animLoop(ts){
   if(effect!=='glow'){ animId=null; return; }
   const cv=$('tiCanvas'), ctx=cv.getContext('2d');
-  if(baseCv.width){ ctx.drawImage(baseCv,0,0); drawGlow(ctx,cv.width,cv.height,ts-glowT0); }
+  if(baseCv.width){ ctx.drawImage(baseCv,0,0); drawEffect(ctx,cv.width,cv.height,ts-glowT0); }
   animId=requestAnimationFrame(animLoop);
 }
 function startAnim(){ if(effect==='glow' && animId==null) animId=requestAnimationFrame(animLoop); }
 function stopAnim(){ if(animId){ cancelAnimationFrame(animId); animId=null; } }
-$('segEffect').querySelectorAll('button').forEach(b=>b.onclick=()=>{
-  $('segEffect').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); effect=b.dataset.e;
+function updEffectUI(){
   const on = effect==='glow';
   $('effectSpeedWrap').style.display = on?'':'none';
   $('videoDurWrap').style.display = (on && videoOK)?'':'none';
-  if(on){ startAnim(); } else { stopAnim(); drawTest(); }
+  $('glowScopeWrap').style.display = (on && pixMode==='slices')?'':'none';   // só faz sentido com slices
+}
+$('segEffect').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segEffect').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); effect=b.dataset.e;
+  updEffectUI();
+  if(effect==='glow'){ startAnim(); } else { stopAnim(); drawTest(); }
+});
+$('segGlowScope').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segGlowScope').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); glowScope=b.dataset.g;
 });
 $('segSpeed').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segSpeed').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
@@ -1325,7 +1353,7 @@ async function encodeMp4(btn){
   for(let i=0;i<total;i++){
     while(encoder.encodeQueueSize>8){ await new Promise(r=>setTimeout(r,1)); }
     ectx.drawImage(baseCv,0,0);
-    drawGlow(ectx,W,H,(i%fpl)/fpl*period);
+    drawEffect(ectx,W,H,(i%fpl)/fpl*period);
     const frame=new VideoFrame(enc,{timestamp:Math.round(i*1e6/fps),duration:Math.round(1e6/fps)});
     encoder.encode(frame,{keyFrame:i%fps===0}); frame.close();
     if(i%4===0) btn.textContent=`● Gerando… ${Math.round(i/total*100)}%`;
@@ -1703,6 +1731,7 @@ function applyModeUI(){
     $('infoPos').value='bc';                      // evita info em cima do logo ao entrar nos slices
     $('infoXYWrap').style.display='none';
   }
+  updEffectUI();
 }
 applyModeUI();
 
