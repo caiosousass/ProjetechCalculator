@@ -323,7 +323,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     <div class="card">
       <div class="seg" id="segPixMode">
         <button data-m="single" class="on">Canvas único</button>
-        <button data-m="slices">Slices</button>
+        <button data-m="slices">Múltiplos canvas</button>
       </div>
     </div>
 
@@ -388,23 +388,23 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
 
     <div id="pxSlices" style="display:none">
     <div class="card">
-      <h3>Canvas (saída da processadora)</h3>
+      <h3>Canvas geral (saída da processadora)</h3>
       <div class="row">
         <div class="field"><label>Largura</label><div class="suffix"><input type="text" id="cvW" value="1920" inputmode="numeric"><span>px</span></div></div>
         <div class="field"><label>Altura</label><div class="suffix"><input type="text" id="cvH" value="1080" inputmode="numeric"><span>px</span></div></div>
       </div>
-      <button class="btn btn-ghost btn-sm" id="cvAuto" style="width:100%;margin-top:10px">Auto (ajustar aos slices)</button>
+      <button class="btn btn-ghost btn-sm" id="cvAuto" style="width:100%;margin-top:10px">Auto (ajustar aos canvas)</button>
     </div>
 
     <div class="card">
-      <h3>Slices</h3>
+      <h3>Múltiplos canvas</h3>
       <div id="sliceList"></div>
-      <button class="btn btn-ghost btn-sm" id="addSlice" style="width:100%">+ Adicionar slice</button>
+      <button class="btn btn-ghost btn-sm" id="addSlice" style="width:100%">+ Adicionar canvas</button>
     </div>
 
     <div class="card">
       <h3>Composição</h3>
-      <div class="slice-vis"><svg id="sliceSvg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Canvas com os slices posicionados"></svg></div>
+      <div class="slice-vis"><svg id="sliceSvg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Canvas geral com os canvas posicionados"></svg></div>
       <div class="hint" id="sliceHint"></div>
     </div>
 
@@ -454,7 +454,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           <label>Título do teste <small style="color:var(--mut2)">(opc.)</small></label>
           <input type="text" id="tiTitle" placeholder="Ex.: Painel palco" autocomplete="off">
         </div>
-        <div class="hint" id="sliceTitleHint" style="display:none">O título de cada slice é o nome que você deu nas Especificações.</div>
+        <div class="hint" id="sliceTitleHint" style="display:none">O título de cada canvas é o nome que você deu nas Especificações.</div>
         <div class="field" style="flex:0 0 auto">
           <label>Cor da info</label>
           <input type="color" id="tiInfoColor" value="#ffffff">
@@ -586,10 +586,10 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="field" id="glowScopeWrap" style="display:none;margin-top:12px">
         <label>Origem do efeito</label>
         <div class="seg" id="segGlowScope">
-          <button data-g="slice" class="on">Por slice</button>
-          <button data-g="canvas">Canvas inteiro</button>
+          <button data-g="slice" class="on">Por canvas</button>
+          <button data-g="canvas">Canvas geral</button>
         </div>
-        <div class="hint" style="margin-top:6px">Por slice: cada tela explode do próprio centro, ao mesmo tempo.</div>
+        <div class="hint" style="margin-top:6px">Por canvas: cada tela explode do próprio centro, ao mesmo tempo.</div>
       </div>
       </details>
       <div class="ti-preview"><canvas id="tiCanvas"></canvas></div>
@@ -1219,7 +1219,7 @@ function drawTestSlices(){
   const cv=$('tiCanvas'); if(!cv) return;
   const cw=parseInt($('cvW').value)||0, ch=parseInt($('cvH').value)||0;
   const list=[...document.querySelectorAll('#sliceList .slice')].map(sliceData).filter(s=>s.gab>0);
-  if(!(cw>0)||!(ch>0)||!list.length){ $('tiInfo').textContent='Defina o canvas e ao menos um slice.'; return; }
+  if(!(cw>0)||!(ch>0)||!list.length){ $('tiInfo').textContent='Defina o canvas geral e ao menos um canvas.'; return; }
   cv.width=cw; cv.height=ch;
   const ctx=cv.getContext('2d');
   ctx.fillStyle='#000'; ctx.fillRect(0,0,cw,ch);                  // fora dos slices = preto
@@ -1237,7 +1237,7 @@ function drawTestSlices(){
     }
   });
   pmeta={totPxW:cw,totPxH:ch,cols:0,rows:0,pxw:0,pxh:0,pitch:0};
-  $('tiInfo').textContent=`Canvas: ${fmt(cw)} × ${fmt(ch)} px · ${list.length} slice(s)`;
+  $('tiInfo').textContent=`Canvas geral: ${fmt(cw)} × ${fmt(ch)} px · ${list.length} canvas`;
   baseCv.width=cw; baseCv.height=ch; baseCtx.clearRect(0,0,cw,ch); baseCtx.drawImage(cv,0,0);
   // linhas-guia do snap só na tela (depois do baseCv, p/ nunca entrarem no PNG/vídeo)
   if(dragEl && (snapG.v!=null || snapG.h!=null)){
@@ -1588,7 +1588,7 @@ function sliceItem(){
   const div=document.createElement('div'); div.className='slice';
   div.innerHTML=`<div class="slice-head">
       <button class="slice-collapse" title="Recolher/expandir">▾</button>
-      <input class="sl-name" value="Slice ${++sliceSeq}">
+      <input class="sl-name" value="Canvas ${++sliceSeq}">
       <span class="sl-res"></span>
       <button class="sl-del" title="Remover">×</button>
     </div>
@@ -1640,7 +1640,7 @@ function sliceData(el){
     : (PANELS[+mv]||PANELS[7]);
   const wM=parseFloat(el.querySelector('.sl-w').value)||0, hM=parseFloat(el.querySelector('.sl-h').value)||0;
   const cols=p.w>0?Math.round(wM/p.w):0, rows=p.h>0?Math.round(hM/p.h):0;
-  return { el, p, name:el.querySelector('.sl-name').value.trim()||'Slice',
+  return { el, p, name:el.querySelector('.sl-name').value.trim()||'Canvas',
     cols, rows, gab:cols*rows,
     pxW:cols*p.rw, pxH:rows*p.rh, mW:cols*p.w, mH:rows*p.h,
     x:parseInt(el.querySelector('.sl-x').value)||0, y:parseInt(el.querySelector('.sl-y').value)||0 };
@@ -1663,11 +1663,11 @@ function calcSlices(){
     if(s.p.pc) tCase+=Math.ceil(s.gab/s.p.pc);
   });
   const cw=parseInt($('cvW').value)||0, ch=parseInt($('cvH').value)||0;
-  let html=S('Canvas', `${fmt(cw)}×${fmt(ch)}<small> px</small>`,'hi full')
-    + S('Slices', `${fmt(list.length)}<small> un</small>`)
+  let html=S('Canvas geral', `${fmt(cw)}×${fmt(ch)}<small> px</small>`,'hi full')
+    + S('Canvas', `${fmt(list.length)}<small> un</small>`)
     + S('Gabinetes', `${fmt(tGab)}<small> un</small>`);
   if(tCase) html+=S('Cases', `${fmt(tCase)}<small> un</small>`);
-  html+=S('Pixels dos slices', `${fmt(tPx)}<small> px</small>`);
+  html+=S('Pixels dos canvas', `${fmt(tPx)}<small> px</small>`);
   if(tKg) html+=S('Peso total (apenas gabinetes)', `${fmt(tKg,1)}<small> kg</small>`);
   if(tAvg) html+=S('Consumo médio', `${fmt(tAvg/1000,2)}<small> kW</small>`);
   if(tMax) html+=S('Consumo máximo', `${fmt(tMax/1000,2)}<small> kW</small>`);
@@ -1677,7 +1677,7 @@ function calcSlices(){
 }
 function drawSliceMap(list,cw,ch){
   const svg=$('sliceSvg'); if(!svg) return;
-  if(!(cw>0)||!(ch>0)){ svg.innerHTML=''; $('sliceHint').textContent='Defina o canvas.'; return; }
+  if(!(cw>0)||!(ch>0)){ svg.innerHTML=''; $('sliceHint').textContent='Defina o canvas geral.'; return; }
   const W=520, H=Math.max(90,Math.round(W*ch/cw));
   const k=W/cw, fx=n=>(+n).toFixed(1);
   let body=`<rect x="0" y="0" width="${W}" height="${H}" rx="4" fill="#05101c" stroke="#26325a"/>`;
@@ -1695,8 +1695,8 @@ function drawSliceMap(list,cw,ch){
   svg.style.maxWidth='100%'; svg.style.height='auto';
   svg.innerHTML=body;
   $('sliceHint').innerHTML = fora
-    ? `⚠️ ${fora} slice(s) fora do canvas — ajuste a posição ou o tamanho do canvas.`
-    : `Posicione pelo X/Y de cada slice — é o mesmo patch que você usa na processadora.`;
+    ? `⚠️ ${fora} canvas fora do canvas geral — ajuste a posição ou o tamanho do canvas geral.`
+    : `Posicione pelo X/Y de cada canvas — é o mesmo patch que você usa na processadora.`;
 }
 $('addSlice').onclick=()=>{ $('sliceList').appendChild(sliceItem()); calcSlices(); };
 ['cvW','cvH'].forEach(id=>$(id).addEventListener('input',calcSlices));
