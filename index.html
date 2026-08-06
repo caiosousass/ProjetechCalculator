@@ -196,6 +196,16 @@ details.sector-res[open] summary::before{transform:rotate(90deg)}
 .sector-summary{display:none;font-size:12px;color:var(--acc2);font-weight:700}
 .sector.collapsed .sector-summary{display:inline}
 .sector.collapsed .sector-body{display:none}
+/* tela de acesso */
+#lockScreen{position:fixed;inset:0;z-index:9999;background:var(--bg);display:grid;place-items:center;padding:24px}
+#lockForm{width:100%;max-width:340px;text-align:center}
+#lockLogo{width:180px;max-width:70%;height:auto;margin:0 auto 22px;display:block}
+#lockTitle{font-size:19px;font-weight:700;color:var(--txt);margin-bottom:6px}
+#lockSub{font-size:13px;color:var(--mut);margin-bottom:22px;line-height:1.5}
+#lockPass{width:100%;margin-bottom:12px;text-align:center;font-size:16px}
+#lockErr{display:none;margin-top:12px;font-size:13px;color:var(--danger)}
+#lockErr.on{display:block}
+body.locked{overflow:hidden}
 /* Pixel Map · Slices */
 .slice{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--bg2)}
 .slice-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
@@ -282,6 +292,17 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
 </head>
 <body>
 
+<div id="lockScreen">
+  <form id="lockForm" autocomplete="off">
+    <img src="logo.png" alt="Projetech" id="lockLogo">
+    <div id="lockTitle">Projetech Calculator</div>
+    <div id="lockSub">Ferramenta interna — informe a senha de acesso</div>
+    <input type="password" id="lockPass" placeholder="Senha" autocomplete="current-password" autocapitalize="off" spellcheck="false">
+    <button type="submit" class="btn btn-primary" style="width:100%">Entrar</button>
+    <div id="lockErr">Senha incorreta.</div>
+  </form>
+</div>
+
 <div class="app">
   <aside class="sidebar" id="sidebar">
     <div class="side-logo">
@@ -294,6 +315,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <button data-scr="proj"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="14" height="10" rx="2"/><circle cx="9" cy="12" r="2.4"/><path d="M16 10l5-2v8l-5-2"/></svg><span>Projeção</span></button>
       <button data-scr="audio"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg><span>Áudio</span></button>
       <button data-scr="light"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg><span>Iluminação</span></button>
+      <button id="logoutBtn" style="margin-top:10px"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span>Sair</span></button>
     </nav>
     <button class="collapse-btn" id="collapseBtn" aria-label="Recolher menu" title="Recolher / expandir">
       <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
@@ -926,6 +948,28 @@ const EMBED_ALLOWED = ['projetech.com.br'];   // origens liberadas p/ embutir (a
   throw new Error('embed-lock: acesso apenas pelo site');
 })();
 
+/* ===== Acesso (senha única) =====
+   A senha não fica no código: guardamos só a "impressão digital" (SHA-256) dela.
+   Barreira simples p/ o app não ficar aberto — não é segurança forte (site estático).
+   Pra trocar a senha: gerar o SHA-256 da nova e substituir PASS_HASH. */
+const PASS_HASH='4490efad2053973ed88299542f01b51bf0680103de6beb110af4ff50fea155e8';
+const LOCK_KEY='projetech-acesso';
+(function lockInit(){
+  const scr=document.getElementById('lockScreen'); if(!scr) return;
+  if(localStorage.getItem(LOCK_KEY)===PASS_HASH){ scr.remove(); return; }   // já entrou antes neste aparelho
+  document.body.classList.add('locked');
+  const sha=async t=>{ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));
+    return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); };
+  document.getElementById('lockForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const inp=document.getElementById('lockPass'), err=document.getElementById('lockErr');
+    let h=''; try{ h=await sha(inp.value); }catch(_){}
+    if(h===PASS_HASH){ localStorage.setItem(LOCK_KEY,PASS_HASH); document.body.classList.remove('locked'); scr.remove(); }
+    else { err.classList.add('on'); inp.value=''; inp.focus(); }
+  });
+  setTimeout(()=>document.getElementById('lockPass').focus(),150);
+})();
+
 const $ = id => document.getElementById(id);
 const fmt = (n,d=0) => isFinite(n) ? n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}) : '—';
 const fmtMm = n => fmt(n, n%1?1:0);   // bitola: vírgula só quando tem decimal (1,5 / 2,5 / 4 / 10…)
@@ -942,9 +986,9 @@ document.addEventListener('input', e => {
 }, true);
 
 /* ============ NAV (sidebar) ============ */
-document.querySelectorAll('.side-nav button').forEach(b=>{
+document.querySelectorAll('.side-nav button[data-scr]').forEach(b=>{
   b.onclick=()=>{
-    document.querySelectorAll('.side-nav button').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.side-nav button[data-scr]').forEach(x=>x.classList.remove('on'));
     document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
     b.classList.add('on');
     $('scr-'+b.dataset.scr).classList.add('active');
@@ -952,6 +996,7 @@ document.querySelectorAll('.side-nav button').forEach(b=>{
     window.scrollTo(0,0);
   };
 });
+$('logoutBtn').onclick=()=>{ if(confirm('Sair do app? Será preciso digitar a senha novamente.')){ localStorage.removeItem(LOCK_KEY); location.reload(); } };
 $('collapseBtn').onclick=()=>document.body.classList.toggle('collapsed');
 $('menuBtn').onclick=()=>document.body.classList.toggle('drawer-open');
 $('scrim').onclick=()=>document.body.classList.remove('drawer-open');
