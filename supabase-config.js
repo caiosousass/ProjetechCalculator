@@ -12,6 +12,6 @@
  * este arquivo é publicado junto com o site.
  */
 window.PT_SUPABASE = {
-  url: '',
+  url: 'https://vqevroeubsihgenjulyt.supabase.co',
   anonKey: ''
 };
