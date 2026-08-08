@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Projetech Calculator">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="auth.css">
+<title>Entrar · Projetech Calculator</title>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-box">
+    <div class="login-logo"><img src="logo.png" alt="Projetech Eventos"></div>
+    <h1 class="login-title">Projetech Calculator</h1>
+    <p class="login-sub">Acesso restrito à equipe</p>
+
+    <div class="card">
+      <form id="form" autocomplete="on">
+        <div class="field">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" inputmode="email" autocomplete="username" placeholder="voce@empresa.com" required>
+        </div>
+        <div class="field">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+        <button class="btn btn-primary" id="go" type="submit" style="margin-top:16px">Entrar</button>
+      </form>
+      <div class="msg" id="msg"></div>
+      <div class="hint" id="hint">Não tem acesso? Peça ao administrador para criar seu usuário.</div>
+    </div>
+  </div>
+</div>
+
+<script src="supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var msg = $('msg'), form = $('form'), go = $('go');
+
+  function show(text, kind){ msg.className = 'msg ' + (kind || 'err'); msg.textContent = text; }
+
+  // Login desligado (supabase-config.js vazio): não faz sentido segurar ninguém aqui.
+  if (!PTAuth.configured) {
+    form.style.display = 'none';
+    show('O login ainda não foi configurado. Preencha supabase-config.js com a URL e a chave anon do projeto.', 'warn');
+    $('hint').innerHTML = '<a href="index.html" style="color:var(--acc2)">Ir para a calculadora</a>';
+  } else {
+    // Já logado? Vai direto pro app.
+    PTAuth.session().then(function(s){ if (s) location.replace('index.html'); });
+
+    form.addEventListener('submit', async function(e){
+      e.preventDefault();
+      msg.className = 'msg';
+      go.disabled = true; go.textContent = 'Entrando…';
+      try {
+        await PTAuth.signIn($('email').value.trim(), $('senha').value);
+        location.replace('index.html');
+      } catch (err) {
+        var t = (err && err.message) || 'Não foi possível entrar.';
+        if (/invalid login credentials/i.test(t)) t = 'E-mail ou senha incorretos.';
+        else if (/email not confirmed/i.test(t)) t = 'E-mail ainda não confirmado. Peça ao administrador para confirmar o usuário.';
+        else if (/failed to fetch|network/i.test(t)) t = 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
+        show(t, 'err');
+        go.disabled = false; go.textContent = 'Entrar';
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

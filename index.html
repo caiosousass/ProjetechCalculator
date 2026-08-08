@@ -10,6 +10,15 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <title>Projetech Calculator</title>
+<script src="supabase-config.js"></script>
+<script>
+/* Trava de acesso — roda antes de desenhar a tela p/ não piscar o app pra quem não entrou.
+   Só age se o login estiver configurado; caso contrário o app abre livre, como sempre. */
+(function(){
+  var c = window.PT_SUPABASE || {};
+  if (c.url && c.anonKey && localStorage.getItem('pt_logged') !== '1') location.replace('login.html');
+})();
+</script>
 <style>
 @font-face{font-family:'Montserrat';font-weight:300;font-style:normal;font-display:swap;src:url('fonts/montserrat-300.woff2') format('woff2')}
 @font-face{font-family:'Montserrat';font-weight:400;font-style:normal;font-display:swap;src:url('fonts/montserrat-400.woff2') format('woff2')}
@@ -61,6 +70,20 @@ body.collapsed .side-logo .logo-mark-img{display:block}
 .side-nav button.on svg{stroke:#fff}
 body.collapsed .side-nav button{justify-content:center;padding:11px 0}
 body.collapsed .side-nav button span{display:none}
+/* rodapé da sidebar: usuário logado (só aparece com o login ligado) */
+.side-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--line);display:none}
+.side-foot.on{display:block}
+.side-foot .who{font-size:11px;color:var(--mut2);padding:0 12px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-foot button{
+  display:flex;align-items:center;gap:12px;border:0;background:transparent;color:var(--mut);
+  width:100%;padding:10px 12px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600;
+  text-align:left;white-space:nowrap;overflow:hidden;transition:.15s;
+}
+.side-foot button:hover{background:var(--bg2);color:var(--txt)}
+.side-foot button svg{width:20px;height:20px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body.collapsed .side-foot .who{display:none}
+body.collapsed .side-foot button{justify-content:center;padding:10px 0}
+body.collapsed .side-foot button span{display:none}
 .collapse-btn{
   margin-top:auto;align-self:flex-end;width:38px;height:38px;border-radius:10px;
   background:var(--bg2);border:1px solid var(--line);color:var(--mut);cursor:pointer;
@@ -295,6 +318,11 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <button data-scr="audio"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg><span>Áudio</span></button>
       <button data-scr="light"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg><span>Iluminação</span></button>
     </nav>
+    <div class="side-foot" id="sideFoot">
+      <div class="who" id="whoAmI"></div>
+      <button id="goAdmin" style="display:none"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.4-3 8.3-7 10-4-1.7-7-5.6-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Administração</span></button>
+      <button id="doLogout"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg><span>Sair</span></button>
+    </div>
     <button class="collapse-btn" id="collapseBtn" aria-label="Recolher menu" title="Recolher / expandir">
       <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
     </button>
@@ -2449,6 +2477,24 @@ calcPixel(); calcPower(); calcProj(); calcBlend(); calcDelay();
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
+</script>
+
+<script src="supabase.min.js"></script>
+<script src="auth.js"></script>
+<script>
+/* Sessão: valida de verdade (a trava do <head> é só p/ evitar o piscar), mostra
+   quem está logado e libera o atalho de Administração pra quem for admin. */
+(function(){
+  if(!window.PTAuth || !PTAuth.configured) return;
+  document.getElementById('doLogout').onclick = ()=>PTAuth.signOut();
+  document.getElementById('goAdmin').onclick  = ()=>{ location.href='admin.html'; };
+  PTAuth.protect().then(ctx=>{
+    if(!ctx) return;
+    document.getElementById('sideFoot').classList.add('on');
+    document.getElementById('whoAmI').textContent = (ctx.profile && ctx.profile.nome) || ctx.session.user.email;
+    if(ctx.profile && ctx.profile.is_admin) document.getElementById('goAdmin').style.display='flex';
+  });
+})();
 </script>
 </body>
 </html>

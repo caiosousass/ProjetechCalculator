@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="auth.css">
+<title>Admin · Projetech Calculator</title>
+</head>
+<body>
+<div class="adm-wrap" id="wrap" style="visibility:hidden">
+  <div class="adm-top">
+    <img src="logo.png" alt="Projetech Eventos">
+    <div class="sp"></div>
+    <button class="btn btn-ghost btn-sm" id="back">← Calculadora</button>
+    <button class="btn btn-ghost btn-sm" id="out">Sair</button>
+  </div>
+
+  <h1 class="adm-title">Administração</h1>
+  <p class="adm-sub">Usuários e registro de acessos</p>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="card">
+    <h3>Usuários</h3>
+    <div class="field"><input type="text" id="qUser" placeholder="Filtrar por nome ou e-mail…"></div>
+    <div class="tbl-wrap"><table class="adm" id="tblUsers"></table></div>
+    <div class="hint">
+      Para <b>criar</b> um usuário: painel do Supabase → Authentication → Users → Add user
+      (marque "Auto Confirm User"). Ele aparece aqui no próximo carregamento.
+      Bloquear impede a entrada pelo app; para cortar o acesso em definitivo, apague o usuário no painel do Supabase.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Acessos</h3>
+    <div class="field">
+      <select id="fPeriod">
+        <option value="1">Últimas 24 horas</option>
+        <option value="7" selected>Últimos 7 dias</option>
+        <option value="30">Últimos 30 dias</option>
+        <option value="0">Tudo</option>
+      </select>
+    </div>
+    <div class="tbl-wrap"><table class="adm" id="tblLog"></table></div>
+    <div class="hint">Cada linha é uma entrada no app (login ou reabertura com sessão salva, no máximo uma por hora por aparelho).</div>
+  </div>
+</div>
+
+<script src="supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var users = [], me = null;
+
+  if (!PTAuth.configured) { location.replace('index.html'); return; }
+
+  function dt(s){
+    if (!s) return '—';
+    var d = new Date(s);
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+  }
+
+  // Só o essencial: qual aparelho/navegador, sem despejar a user-agent inteira na tela.
+  function device(ua){
+    if (!ua) return '—';
+    var os  = /iPhone|iPad|iPod/.test(ua) ? 'iOS'
+            : /Android/.test(ua) ? 'Android'
+            : /Windows/.test(ua) ? 'Windows'
+            : /Mac OS X/.test(ua) ? 'Mac'
+            : /Linux/.test(ua) ? 'Linux' : 'Outro';
+    var nav = /CriOS|Chrome/.test(ua) ? 'Chrome'
+            : /FxiOS|Firefox/.test(ua) ? 'Firefox'
+            : /Edg/.test(ua) ? 'Edge'
+            : /Safari/.test(ua) ? 'Safari' : '';
+    return os + (nav ? ' · ' + nav : '');
+  }
+
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  /* ---------- usuários ---------- */
+
+  async function loadUsers(){
+    var r = await PTAuth.client.from('profiles').select('*').order('created_at', {ascending:true});
+    if (r.error) { $('tblUsers').innerHTML = '<tbody><tr><td class="empty">Erro ao carregar: ' + esc(r.error.message) + '</td></tr></tbody>'; return; }
+    users = r.data || [];
+    renderUsers();
+    renderStats();
+  }
+
+  function renderUsers(){
+    var q = $('qUser').value.trim().toLowerCase();
+    var list = q ? users.filter(function(u){
+      return (u.email || '').toLowerCase().indexOf(q) >= 0 || (u.nome || '').toLowerCase().indexOf(q) >= 0;
+    }) : users;
+
+    if (!list.length) { $('tblUsers').innerHTML = '<tbody><tr><td class="empty">Nenhum usuário.</td></tr></tbody>'; return; }
+
+    var h = '<thead><tr><th>Usuário</th><th>Situação</th><th>Último acesso</th><th></th></tr></thead><tbody>';
+    list.forEach(function(u){
+      var eu = u.id === me.id;
+      h += '<tr>'
+        + '<td><b>' + esc(u.nome || u.email || '—') + '</b>'
+          + (u.nome ? '<div class="dim" style="font-size:12px">' + esc(u.email) + '</div>' : '')
+          + '</td>'
+        + '<td>' + (u.is_admin ? '<span class="tag adm">admin</span> ' : '')
+          + (u.blocked ? '<span class="tag blk">bloqueado</span>' : '<span class="tag ok">ativo</span>') + '</td>'
+        + '<td class="mono dim">' + dt(u.last_seen) + '</td>'
+        + '<td style="text-align:right">'
+          + (eu ? '<span class="dim" style="font-size:12px">você</span>'
+                : '<button class="btn btn-ghost btn-sm" data-blk="' + u.id + '" data-v="' + (u.blocked ? '0' : '1') + '">'
+                  + (u.blocked ? 'Desbloquear' : 'Bloquear') + '</button>')
+          + '</td>'
+        + '</tr>';
+    });
+    $('tblUsers').innerHTML = h + '</tbody>';
+
+    [].forEach.call($('tblUsers').querySelectorAll('[data-blk]'), function(b){
+      b.onclick = async function(){
+        b.disabled = true;
+        var r = await PTAuth.client.rpc('admin_set_blocked', { target: b.dataset.blk, value: b.dataset.v === '1' });
+        if (r.error) { alert('Não foi possível alterar: ' + r.error.message); b.disabled = false; return; }
+        loadUsers();
+      };
+    });
+  }
+
+  function renderStats(){
+    var ativos = users.filter(function(u){ return !u.blocked; }).length;
+    var hoje = users.filter(function(u){
+      return u.last_seen && (Date.now() - new Date(u.last_seen)) < 864e5;
+    }).length;
+    $('stats').innerHTML =
+        '<div class="stat"><div class="k">Usuários</div><div class="v">' + users.length + '</div></div>'
+      + '<div class="stat"><div class="k">Ativos</div><div class="v">' + ativos + '</div></div>'
+      + '<div class="stat"><div class="k">Entraram hoje</div><div class="v">' + hoje + '</div></div>';
+  }
+
+  /* ---------- acessos ---------- */
+
+  async function loadLog(){
+    var dias = +$('fPeriod').value;
+    var q = PTAuth.client.from('access_log').select('*').order('created_at', {ascending:false}).limit(300);
+    if (dias > 0) q = q.gte('created_at', new Date(Date.now() - dias * 864e5).toISOString());
+    var r = await q;
+    if (r.error) { $('tblLog').innerHTML = '<tbody><tr><td class="empty">Erro ao carregar: ' + esc(r.error.message) + '</td></tr></tbody>'; return; }
+
+    var list = r.data || [];
+    if (!list.length) { $('tblLog').innerHTML = '<tbody><tr><td class="empty">Nenhum acesso no período.</td></tr></tbody>'; return; }
+
+    var h = '<thead><tr><th>Quando</th><th>Usuário</th><th>Aparelho</th></tr></thead><tbody>';
+    list.forEach(function(a){
+      h += '<tr><td class="mono">' + dt(a.created_at) + '</td>'
+         + '<td>' + esc(a.email || '—') + '</td>'
+         + '<td class="dim">' + esc(device(a.user_agent)) + '</td></tr>';
+    });
+    $('tblLog').innerHTML = h + '</tbody>';
+  }
+
+  /* ---------- início ---------- */
+
+  (async function(){
+    var ctx = await PTAuth.protectAdmin();
+    if (!ctx) return;                       // protectAdmin já redirecionou
+    me = ctx.profile;
+    $('wrap').style.visibility = 'visible';
+    $('back').onclick = function(){ location.href = 'index.html'; };
+    $('out').onclick  = function(){ PTAuth.signOut(); };
+    $('qUser').addEventListener('input', renderUsers);
+    $('fPeriod').addEventListener('change', loadLog);
+    await loadUsers();
+    await loadLog();
+  })();
+})();
+</script>
+</body>
+</html>
