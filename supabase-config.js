@@ -21,5 +21,5 @@ window.PT_SUPABASE = {
    * enforce: true  → o login passa a valer: sem entrar, não abre a calculadora
    *                  (e a tela de senha única sai de cena).
    * Vire para true só depois de confirmar que o login funciona. */
-  enforce: false
+  enforce: true
 };
