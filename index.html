@@ -984,6 +984,8 @@ const PASS_HASH='4490efad2053973ed88299542f01b51bf0680103de6beb110af4ff50fea155e
 const LOCK_KEY='projetech-acesso';
 (function lockInit(){
   const scr=document.getElementById('lockScreen'); if(!scr) return;
+  const sb=window.PT_SUPABASE||{};
+  if(sb.url&&sb.anonKey){ scr.remove(); return; }    // login por usuário ligado: uma barreira só, não duas
   if(localStorage.getItem(LOCK_KEY)===PASS_HASH){ scr.remove(); return; }   // já entrou antes neste aparelho
   document.body.classList.add('locked');
   const sha=async t=>{ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));
@@ -1024,7 +1026,9 @@ document.querySelectorAll('.side-nav button[data-scr]').forEach(b=>{
     window.scrollTo(0,0);
   };
 });
-$('logoutBtn').onclick=()=>{ if(confirm('Sair do app? Será preciso digitar a senha novamente.')){ localStorage.removeItem(LOCK_KEY); location.reload(); } };
+/* "Sair" da senha única — com login por usuário ligado quem manda é o Sair do rodapé */
+if(window.PT_SUPABASE && PT_SUPABASE.url && PT_SUPABASE.anonKey) $('logoutBtn').style.display='none';
+else $('logoutBtn').onclick=()=>{ if(confirm('Sair do app? Será preciso digitar a senha novamente.')){ localStorage.removeItem(LOCK_KEY); location.reload(); } };
 $('collapseBtn').onclick=()=>document.body.classList.toggle('collapsed');
 $('menuBtn').onclick=()=>document.body.classList.toggle('drawer-open');
 $('scrim').onclick=()=>document.body.classList.remove('drawer-open');
