@@ -16,7 +16,7 @@
    Só age se o login estiver configurado; caso contrário o app abre livre, como sempre. */
 (function(){
   var c = window.PT_SUPABASE || {};
-  if (c.url && c.anonKey && localStorage.getItem('pt_logged') !== '1') location.replace('login.html');
+  if (c.url && c.anonKey && c.enforce && localStorage.getItem('pt_logged') !== '1') location.replace('login.html');
 })();
 </script>
 <style>
@@ -985,7 +985,7 @@ const LOCK_KEY='projetech-acesso';
 (function lockInit(){
   const scr=document.getElementById('lockScreen'); if(!scr) return;
   const sb=window.PT_SUPABASE||{};
-  if(sb.url&&sb.anonKey){ scr.remove(); return; }    // login por usuário ligado: uma barreira só, não duas
+  if(sb.url&&sb.anonKey&&sb.enforce){ scr.remove(); return; }    // login por usuário ligado: uma barreira só, não duas
   if(localStorage.getItem(LOCK_KEY)===PASS_HASH){ scr.remove(); return; }   // já entrou antes neste aparelho
   document.body.classList.add('locked');
   const sha=async t=>{ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));
@@ -1027,7 +1027,7 @@ document.querySelectorAll('.side-nav button[data-scr]').forEach(b=>{
   };
 });
 /* "Sair" da senha única — com login por usuário ligado quem manda é o Sair do rodapé */
-if(window.PT_SUPABASE && PT_SUPABASE.url && PT_SUPABASE.anonKey) $('logoutBtn').style.display='none';
+if(window.PT_SUPABASE && PT_SUPABASE.url && PT_SUPABASE.anonKey && PT_SUPABASE.enforce) $('logoutBtn').style.display='none';
 else $('logoutBtn').onclick=()=>{ if(confirm('Sair do app? Será preciso digitar a senha novamente.')){ localStorage.removeItem(LOCK_KEY); location.reload(); } };
 $('collapseBtn').onclick=()=>document.body.classList.toggle('collapsed');
 $('menuBtn').onclick=()=>document.body.classList.toggle('drawer-open');
@@ -2534,7 +2534,7 @@ if('serviceWorker' in navigator){
 /* Sessão: valida de verdade (a trava do <head> é só p/ evitar o piscar), mostra
    quem está logado e libera o atalho de Administração pra quem for admin. */
 (function(){
-  if(!window.PTAuth || !PTAuth.configured) return;
+  if(!window.PTAuth || !PTAuth.configured || !PT_SUPABASE.enforce) return;   // em modo teste o app segue aberto
   document.getElementById('doLogout').onclick = ()=>PTAuth.signOut();
   document.getElementById('goAdmin').onclick  = ()=>{ location.href='admin.html'; };
   PTAuth.protect().then(ctx=>{
