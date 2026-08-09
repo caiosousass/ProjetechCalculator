@@ -57,6 +57,23 @@
     location.replace('login.html');
   };
 
+  // Envia o e-mail com o link de redefinição (leva o usuário para nova-senha.html).
+  api.sendReset = async function (email) {
+    if (!api.client) throw new Error('Não configurado.');
+    var redirectTo = new URL('nova-senha.html', location.href).href;
+    var r = await api.client.auth.resetPasswordForEmail(email, { redirectTo: redirectTo });
+    if (r.error) throw r.error;
+    return true;
+  };
+
+  // Define a nova senha (só funciona com a sessão de recuperação vinda do link do e-mail).
+  api.updatePassword = async function (pass) {
+    if (!api.client) throw new Error('Não configurado.');
+    var r = await api.client.auth.updateUser({ password: pass });
+    if (r.error) throw r.error;
+    return true;
+  };
+
   // Usado no admin.html: exige sessão válida E is_admin.
   api.protectAdmin = async function () {
     if (!configured) { location.replace('index.html'); return null; }

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1020">
+<link rel="manifest" href="manifest-admin.json">
+<link rel="apple-touch-icon" href="icons/icon-admin-192.png">
+<link rel="stylesheet" href="auth.css">
+<title>Nova senha · Projetech Calculator</title>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-box">
+    <div class="login-logo"><img src="logo.png" alt="Projetech Eventos"></div>
+    <h1 class="login-title">Nova senha</h1>
+    <p class="login-sub" id="sub">Confirmando o link…</p>
+
+    <div class="card">
+      <form id="form" autocomplete="on" style="display:none">
+        <div class="field">
+          <label for="senha">Nova senha</label>
+          <input type="password" id="senha" autocomplete="new-password" placeholder="Mínimo 6 caracteres" required>
+        </div>
+        <div class="field">
+          <label for="senha2">Repita a nova senha</label>
+          <input type="password" id="senha2" autocomplete="new-password" placeholder="••••••••" required>
+        </div>
+        <button class="btn btn-primary" id="go" type="submit" style="margin-top:16px">Salvar nova senha</button>
+      </form>
+      <div class="msg" id="msg"></div>
+      <div class="hint"><a href="login.html" style="color:var(--acc2)">← Ir para o login</a></div>
+    </div>
+  </div>
+</div>
+
+<script src="supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var msg = $('msg'), form = $('form'), go = $('go'), sub = $('sub');
+  function show(t,k){ msg.className='msg '+(k||'err'); msg.textContent=t; }
+
+  if(!PTAuth.configured){ location.replace('index.html'); return; }
+
+  var shown = false, decided = false;
+  function reveal(){
+    if(shown) return; shown = true; decided = true;
+    sub.textContent = 'Crie uma nova senha para a sua conta.';
+    form.style.display = '';
+    setTimeout(function(){ try{ $('senha').focus(); }catch(e){} }, 100);
+  }
+  function fail(){
+    if(decided) return; decided = true;
+    sub.textContent = 'Não foi possível validar o link.';
+    show('Este link é inválido ou expirou. Volte ao login e peça um novo em "Esqueci minha senha".','err');
+  }
+
+  // O supabase-js lê o token do link (no endereço) e abre a sessão de recuperação.
+  PTAuth.client.auth.onAuthStateChange(function(event, session){
+    if(session && (event==='PASSWORD_RECOVERY' || event==='SIGNED_IN' || event==='INITIAL_SESSION')) reveal();
+  });
+  // Rede de segurança: se em ~1,5s houver sessão, mostra o formulário; senão, avisa.
+  setTimeout(async function(){
+    var s = await PTAuth.session();
+    if(s) reveal(); else fail();
+  }, 1500);
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    msg.className='msg';
+    var p1=$('senha').value, p2=$('senha2').value;
+    if(p1.length < 6){ show('A senha precisa ter ao menos 6 caracteres.','err'); return; }
+    if(p1 !== p2){ show('As senhas não são iguais.','err'); return; }
+    go.disabled=true; go.textContent='Salvando…';
+    try{
+      await PTAuth.updatePassword(p1);
+      form.style.display='none';
+      sub.textContent='Tudo certo!';
+      show('Senha alterada com sucesso. Agora entre com a nova senha.','ok');
+      setTimeout(function(){ location.replace('login.html'); }, 2200);
+    }catch(err){
+      var t=(err&&err.message)||'Não foi possível salvar.';
+      if(/session|jwt|expired/i.test(t)) t='A sessão do link expirou. Peça um novo link no login.';
+      else if(/failed to fetch|network/i.test(t)) t='Sem conexão. Verifique a internet e tente de novo.';
+      show(t,'err');
+      go.disabled=false; go.textContent='Salvar nova senha';
+    }
+  });
+})();
+</script>
+</body>
+</html>
