@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Projetech Calculator">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="auth.css">
+<title>Projetech Calculator</title>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-box">
+    <div class="login-logo"><img src="logo.png" alt="Projetech Eventos"></div>
+    <h1 class="login-title">Projetech Calculator</h1>
+    <p class="login-sub">Ferramenta gratuita para profissionais de eventos</p>
+
+    <div class="card">
+      <form id="form" autocomplete="on">
+        <div class="field">
+          <label for="nome">Nome</label>
+          <input type="text" id="nome" autocomplete="name" placeholder="Seu nome" required>
+        </div>
+        <div class="field">
+          <label for="area">Área de atuação</label>
+          <select id="area" required>
+            <option value="" disabled selected>Selecione…</option>
+            <option>Áudio</option>
+            <option>Iluminação</option>
+            <option>Vídeo / LED</option>
+            <option>Projeção</option>
+            <option>Estrutura / Rigging</option>
+            <option>Energia / Elétrica</option>
+            <option>Produção</option>
+            <option>Gerência técnica</option>
+            <option>Freelancer</option>
+            <option>Outra</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="cidade">Cidade / Estado</label>
+          <input type="text" id="cidade" autocomplete="address-level2" placeholder="Ex.: São Paulo / SP" required>
+        </div>
+        <div class="field">
+          <label for="contato">WhatsApp ou e-mail</label>
+          <input type="text" id="contato" inputmode="email" placeholder="(11) 90000-0000 ou voce@email.com" required>
+        </div>
+        <button class="btn btn-primary" id="go" type="submit" style="margin-top:16px">Entrar na calculadora</button>
+      </form>
+      <div class="msg" id="msg"></div>
+      <div class="hint">Usamos seus dados apenas para contato da Projetech Eventos. É rápido e só uma vez.</div>
+    </div>
+  </div>
+</div>
+
+<script src="supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="auth.js"></script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var msg = $('msg'), form = $('form'), go = $('go');
+  function show(t,k){ msg.className='msg '+(k||'err'); msg.textContent=t; }
+
+  // Sem Supabase configurado → app livre, sem tela de entrada.
+  if(!PTAuth.configured){ location.replace('index.html'); return; }
+  // Já se identificou neste aparelho → direto pro app.
+  if(PTVisit.hasIdentity()){ location.replace('index.html'); return; }
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    msg.className='msg';
+    var nome=$('nome').value.trim(), area=$('area').value, cidade=$('cidade').value.trim(), contato=$('contato').value.trim();
+    if(!nome || !area || !cidade || !contato){ show('Preencha todos os campos.','err'); return; }
+    go.disabled=true; go.textContent='Entrando…';
+    try{
+      await PTVisit.register({ nome:nome, area:area, cidade:cidade, contato:contato });
+      location.replace('index.html');
+    }catch(err){
+      // register salva a identidade localmente mesmo se o envio falhar — então seguimos pro app.
+      location.replace('index.html');
+    }
+  });
+})();
+</script>
+</body>
+</html>

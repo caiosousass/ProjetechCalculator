@@ -1,15 +1,16 @@
-/* Projetech Calc — camada de login (Supabase)
+/* Projetech Calc — acesso aberto ao mercado
  * Requer, nesta ordem: supabase.min.js, supabase-config.js, auth.js
  *
- * Regra geral: se supabase-config.js estiver vazio, tudo aqui vira no-op e o
- * app segue aberto como sempre foi. Nada de tela de login pela metade no ar.
+ * Duas camadas independentes:
+ *   PTAuth  — login SÓ do administrador (ver o painel). Usa Supabase Auth.
+ *   PTVisit — identificação do visitante e registro de cada entrada (sem senha),
+ *             com fila offline que sobe quando a internet volta.
+ *
+ * Se supabase-config.js estiver vazio, tudo aqui vira no-op e o app fica 100% livre.
  */
 (function () {
   var cfg = window.PT_SUPABASE || {};
   var configured = !!(cfg.url && cfg.anonKey);
-  var FLAG = 'pt_logged';          // marca local, só p/ evitar piscar a tela antes do SDK carregar
-  var SEEN = 'pt_last_log';        // timestamp do último registro de acesso deste aparelho
-
   var api = { configured: configured, client: null };
 
   if (configured && typeof supabase !== 'undefined') {
@@ -18,7 +19,8 @@
     });
   }
 
-  /* ---------- sessão ---------- */
+  /* ================= ADMIN ================= */
+  var ADM = 'pt_admin';
 
   api.session = async function () {
     if (!api.client) return null;
@@ -35,112 +37,118 @@
     return r.data;
   };
 
-  /* ---------- entrar / sair ---------- */
-
   api.signIn = async function (email, senha) {
     if (!api.client) throw new Error('Login não configurado.');
     var r = await api.client.auth.signInWithPassword({ email: email, password: senha });
     if (r.error) throw r.error;
-
     var prof = await api.profile(r.data.session);
-    if (prof && prof.blocked) {
+    if (!prof || !prof.is_admin) {
       await api.client.auth.signOut();
-      localStorage.removeItem(FLAG);
-      throw new Error('Este usuário está bloqueado. Fale com o administrador.');
+      localStorage.removeItem(ADM);
+      throw new Error('Esta conta não é de administrador.');
     }
-    if (prof && prof.approved === false) {
-      await api.client.auth.signOut();
-      localStorage.removeItem(FLAG);
-      throw new Error('Sua conta ainda não foi aprovada pelo administrador.');
-    }
-
-    localStorage.setItem(FLAG, '1');
-    await api.logAccess(r.data.session);
+    localStorage.setItem(ADM, '1');
     return r.data.session;
   };
 
-  // Auto-cadastro. Cria a conta em estado "pendente" (approved=false no banco);
-  // quem libera é o admin pelo painel. Não deixa sessão aberta pra conta pendente.
-  api.signUp = async function (nome, email, senha) {
-    if (!api.client) throw new Error('Cadastro não configurado.');
-    var r = await api.client.auth.signUp({
-      email: email, password: senha, options: { data: { nome: nome } }
-    });
-    if (r.error) throw r.error;
-    var precisaEmail = !(r.data && r.data.session);   // true = projeto ainda exige confirmar e-mail
-    try { await api.client.auth.signOut(); } catch (e) {}
-    localStorage.removeItem(FLAG);
-    return { precisaEmail: precisaEmail };
-  };
-
   api.signOut = async function () {
-    localStorage.removeItem(FLAG);
-    localStorage.removeItem(SEEN);
+    localStorage.removeItem(ADM);
     if (api.client) { try { await api.client.auth.signOut(); } catch (e) {} }
     location.replace('login.html');
   };
 
-  /* ---------- registro de acesso ---------- */
-
-  // Grava uma linha em access_log. Chamado no login e, no máximo 1x por hora,
-  // quando o app é reaberto com sessão válida (senão o log vira spam).
-  api.logAccess = async function (session) {
-    if (!api.client) return;
-    var s = session || (await api.session());
-    if (!s) return;
-    try {
-      await api.client.from('access_log').insert({
-        user_id: s.user.id,
-        email: s.user.email,
-        user_agent: navigator.userAgent
-      });
-      localStorage.setItem(SEEN, String(Date.now()));
-    } catch (e) { /* offline ou sem permissão: não trava o app */ }
-  };
-
-  api.touch = async function (session) {
-    if (!api.client || !session) return;
-    try {
-      await api.client.from('profiles')
-        .update({ last_seen: new Date().toISOString() })
-        .eq('id', session.user.id);
-    } catch (e) {}
-    var last = +(localStorage.getItem(SEEN) || 0);
-    if (Date.now() - last > 3600e3) api.logAccess(session);   // 1h
-  };
-
-  /* ---------- proteção das páginas ---------- */
-
-  // Usado no index.html: exige sessão válida, derruba usuário bloqueado e
-  // atualiza o "último acesso". Offline, aceita a sessão guardada no aparelho.
-  api.protect = async function () {
-    if (!configured) return null;
+  // Usado no admin.html: exige sessão válida E is_admin.
+  api.protectAdmin = async function () {
+    if (!configured) { location.replace('index.html'); return null; }
     var s = await api.session();
-    if (!s) { localStorage.removeItem(FLAG); location.replace('login.html'); return null; }
-    localStorage.setItem(FLAG, '1');
-
+    if (!s) { localStorage.removeItem(ADM); location.replace('login.html'); return null; }
     var prof = await api.profile(s);
-    if (prof && prof.blocked) {
-      alert('Seu acesso foi bloqueado pelo administrador.');
-      await api.signOut();
-      return null;
-    }
-    if (prof && prof.approved === false) {
-      alert('Sua conta ainda não foi aprovada pelo administrador.');
-      await api.signOut();
-      return null;
-    }
-    api.touch(s);
+    if (!prof || !prof.is_admin) { location.replace('index.html'); return null; }
+    localStorage.setItem(ADM, '1');
     return { session: s, profile: prof };
   };
 
-  // Usado no admin.html: além de sessão válida, exige is_admin.
-  api.protectAdmin = async function () {
-    var ctx = await api.protect();
-    if (!ctx) return null;
-    if (!ctx.profile || !ctx.profile.is_admin) { location.replace('index.html'); return null; }
-    return ctx;
+  window.PTAuth = api;
+
+  /* ================= VISITANTE ================= */
+  var IDK   = 'pt_visitor';        // identidade { device, nome, area, cidade, contato }
+  var QK    = 'pt_visit_queue';    // entradas ainda não enviadas (offline)
+  var LASTK = 'pt_last_visit';     // instante da última entrada contada
+  var DIRTY = 'pt_visitor_dirty';  // cadastro do visitante ainda não subiu
+  var THROTTLE = 30 * 60 * 1000;   // 30 min: recarregar a página não conta como nova entrada
+
+  function uuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'd-' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  }
+
+  var vis = {};
+
+  vis.identity = function () {
+    try { return JSON.parse(localStorage.getItem(IDK) || 'null'); } catch (e) { return null; }
+  };
+  vis.hasIdentity = function () { var i = vis.identity(); return !!(i && i.device); };
+
+  // Chamado na tela de entrada (acesso.html). Salva a identidade no aparelho,
+  // marca o cadastro como pendente e já conta a primeira entrada. O envio (e o
+  // reenvio, se estiver offline) fica por conta de flush().
+  vis.register = async function (data) {
+    var prev = vis.identity() || {};
+    var device = prev.device || uuid();
+    var rec = { device: device, nome: data.nome, area: data.area, cidade: data.cidade, contato: data.contato };
+    localStorage.setItem(IDK, JSON.stringify(rec));
+    localStorage.setItem(DIRTY, '1');
+    await vis.logVisit(true);   // enfileira a 1ª visita e chama flush (que também sobe o cadastro)
+    return rec;
   };
 
-  window.PTAuth = api;
+  function queueGet(){ try { return JSON.parse(localStorage.getItem(QK) || '[]'); } catch (e) { return []; } }
+  function queueSet(a){ localStorage.setItem(QK, JSON.stringify(a.slice(-300))); }
+
+  // Registra uma entrada. force ignora o intervalo anti-refresh (usado no 1º acesso).
+  vis.logVisit = async function (force) {
+    var id = vis.identity();
+    if (!id || !id.device) return;
+    var last = +(localStorage.getItem(LASTK) || 0);
+    if (!force && (Date.now() - last) < THROTTLE) return;
+    localStorage.setItem(LASTK, String(Date.now()));
+    var v = { p_device: id.device, p_nome: id.nome, p_area: id.area, p_cidade: id.cidade,
+              p_ua: navigator.userAgent, p_ocorreu: new Date().toISOString() };
+    var q = queueGet(); q.push(v); queueSet(q);
+    await vis.flush();
+  };
+
+  // Sobe o que estiver pendente: o cadastro do visitante e a fila de entradas.
+  // Importante: o supabase-js NÃO lança erro em falha de rede — devolve {error}.
+  // Por isso conferimos res.error antes de tirar o item da fila; senão a entrada
+  // feita offline seria descartada em vez de reenviada.
+  vis.flush = async function () {
+    if (!api.client || !navigator.onLine) return;
+
+    if (localStorage.getItem(DIRTY)) {
+      var id = vis.identity();
+      if (id && id.device) {
+        try {
+          var r1 = await api.client.rpc('registrar_visitante', {
+            p_device: id.device, p_nome: id.nome, p_area: id.area, p_cidade: id.cidade, p_contato: id.contato
+          });
+          if (!(r1 && r1.error)) localStorage.removeItem(DIRTY);
+        } catch (e) { /* tenta de novo depois */ }
+      } else {
+        localStorage.removeItem(DIRTY);
+      }
+    }
+
+    var q = queueGet();
+    while (q.length) {
+      try {
+        var r2 = await api.client.rpc('registrar_visita', q[0]);
+        if (r2 && r2.error) break;   // falhou (rede/servidor): mantém na fila
+        q.shift(); queueSet(q);
+      } catch (e) { break; }
+    }
+  };
+
+  window.PTVisit = vis;
+  window.addEventListener('online', function () { vis.flush(); });
 })();

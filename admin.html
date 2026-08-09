@@ -9,7 +9,16 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="auth.css">
-<title>Admin · Projetech Calculator</title>
+<style>
+  .bars{display:flex;flex-direction:column;gap:8px}
+  .bar-row{display:grid;grid-template-columns:130px 1fr 44px;gap:10px;align-items:center;font-size:13px}
+  .bar-row .lbl{color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar-row .track{background:var(--bg2);border-radius:99px;height:10px;overflow:hidden}
+  .bar-row .fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:99px}
+  .bar-row .num{text-align:right;color:var(--mut);font-weight:700}
+  @media(max-width:520px){ .bar-row{grid-template-columns:100px 1fr 38px} }
+</style>
+<title>Painel · Projetech Calculator</title>
 </head>
 <body>
 <div class="adm-wrap" id="wrap" style="visibility:hidden">
@@ -20,39 +29,32 @@
     <button class="btn btn-ghost btn-sm" id="out">Sair</button>
   </div>
 
-  <h1 class="adm-title">Administração</h1>
-  <p class="adm-sub">Usuários e registro de acessos</p>
+  <h1 class="adm-title">Painel Projetech Calculator</h1>
+  <p class="adm-sub">Quem está usando a ferramenta</p>
 
   <div class="stats" id="stats"></div>
 
-  <div class="card" id="pendCard" style="display:none;border-color:rgba(245,158,11,.5)">
-    <h3 style="color:var(--warn)">Contas pendentes · <span id="pendCount">0</span></h3>
-    <div class="tbl-wrap"><table class="adm" id="tblPend"></table></div>
-    <div class="hint">Alguém criou uma conta e aguarda sua liberação. <b>Aprovar</b> libera o acesso; <b>Recusar</b> bloqueia a entrada.</div>
+  <div class="card">
+    <h3>Por área de atuação</h3>
+    <div class="bars" id="byArea"></div>
   </div>
 
   <div class="card">
-    <h3>Usuários</h3>
-    <div class="field"><input type="text" id="qUser" placeholder="Filtrar por nome ou e-mail…"></div>
-    <div class="tbl-wrap"><table class="adm" id="tblUsers"></table></div>
-    <div class="hint">
-      Novos usuários entram sozinhos pela tela de login (<b>Criar conta</b>) e ficam pendentes até você aprovar aqui.
-      Bloquear impede a entrada pelo app.
-    </div>
+    <h3>Por cidade</h3>
+    <div class="bars" id="byCity"></div>
   </div>
 
   <div class="card">
-    <h3>Acessos</h3>
-    <div class="field">
-      <select id="fPeriod">
-        <option value="1">Últimas 24 horas</option>
-        <option value="7" selected>Últimos 7 dias</option>
-        <option value="30">Últimos 30 dias</option>
-        <option value="0">Tudo</option>
-      </select>
-    </div>
+    <h3>Pessoas</h3>
+    <div class="field"><input type="text" id="qUser" placeholder="Filtrar por nome, área ou cidade…"></div>
+    <div class="tbl-wrap"><table class="adm" id="tblPeople"></table></div>
+    <div class="hint">Cada linha é uma pessoa (um aparelho). O contato é o que ela informou na entrada.</div>
+  </div>
+
+  <div class="card">
+    <h3>Acessos recentes</h3>
     <div class="tbl-wrap"><table class="adm" id="tblLog"></table></div>
-    <div class="hint">Cada linha é uma entrada no app (login ou reabertura com sessão salva, no máximo uma por hora por aparelho).</div>
+    <div class="hint">Cada linha é uma entrada no app (novas entradas contam no máximo uma a cada 30 min por aparelho).</div>
   </div>
 </div>
 
@@ -62,173 +64,95 @@
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var users = [], me = null;
+  var people = [];
 
-  if (!PTAuth.configured) { location.replace('index.html'); return; }
+  if(!PTAuth.configured){ location.replace('index.html'); return; }
 
-  function dt(s){
-    if (!s) return '—';
-    var d = new Date(s);
-    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-  }
-
-  // Só o essencial: qual aparelho/navegador, sem despejar a user-agent inteira na tela.
-  function device(ua){
-    if (!ua) return '—';
-    var os  = /iPhone|iPad|iPod/.test(ua) ? 'iOS'
-            : /Android/.test(ua) ? 'Android'
-            : /Windows/.test(ua) ? 'Windows'
-            : /Mac OS X/.test(ua) ? 'Mac'
-            : /Linux/.test(ua) ? 'Linux' : 'Outro';
-    var nav = /CriOS|Chrome/.test(ua) ? 'Chrome'
-            : /FxiOS|Firefox/.test(ua) ? 'Firefox'
-            : /Edg/.test(ua) ? 'Edge'
-            : /Safari/.test(ua) ? 'Safari' : '';
-    return os + (nav ? ' · ' + nav : '');
-  }
-
-  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){
+  function dt(s){ if(!s) return '—'; var d=new Date(s);
+    return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function device(ua){ if(!ua) return '—';
+    var os=/iPhone|iPad|iPod/.test(ua)?'iOS':/Android/.test(ua)?'Android':/Windows/.test(ua)?'Windows':/Mac OS X/.test(ua)?'Mac':/Linux/.test(ua)?'Linux':'Outro';
+    var nav=/CriOS|Chrome/.test(ua)?'Chrome':/FxiOS|Firefox/.test(ua)?'Firefox':/Edg/.test(ua)?'Edge':/Safari/.test(ua)?'Safari':'';
+    return os+(nav?' · '+nav:''); }
 
-  /* ---------- usuários ---------- */
-
-  async function loadUsers(){
-    var r = await PTAuth.client.from('profiles').select('*').order('created_at', {ascending:true});
-    if (r.error) { $('tblUsers').innerHTML = '<tbody><tr><td class="empty">Erro ao carregar: ' + esc(r.error.message) + '</td></tr></tbody>'; return; }
-    users = r.data || [];
-    renderPending();
-    renderUsers();
-    renderStats();
+  function bars(el, pairs){
+    if(!pairs.length){ el.innerHTML='<div class="empty">Sem dados ainda.</div>'; return; }
+    var max=pairs[0][1]||1;
+    el.innerHTML = pairs.map(function(p){
+      var pct=Math.round((p[1]/max)*100);
+      return '<div class="bar-row"><div class="lbl">'+esc(p[0]||'—')+'</div>'
+           + '<div class="track"><div class="fill" style="width:'+pct+'%"></div></div>'
+           + '<div class="num">'+p[1]+'</div></div>';
+    }).join('');
+  }
+  function groupCount(arr, key){
+    var m={}; arr.forEach(function(x){ var k=(x[key]||'—').trim()||'—'; m[k]=(m[k]||0)+1; });
+    return Object.keys(m).map(function(k){ return [k,m[k]]; }).sort(function(a,b){ return b[1]-a[1]; });
   }
 
-  // approved pode não existir ainda (banco sem a migração): trata ausência como aprovado,
-  // p/ não marcar todo mundo como pendente por engano.
-  function isPending(u){ return u.approved === false; }
-
-  function renderPending(){
-    var pend = users.filter(isPending);
-    $('pendCount').textContent = pend.length;
-    $('pendCard').style.display = pend.length ? '' : 'none';
-    if (!pend.length) { $('tblPend').innerHTML = ''; return; }
-
-    var h = '<thead><tr><th>Nome</th><th>E-mail</th><th>Quando</th><th></th></tr></thead><tbody>';
-    pend.forEach(function(u){
-      h += '<tr>'
-        + '<td><b>' + esc(u.nome || '—') + '</b></td>'
-        + '<td>' + esc(u.email || '—') + '</td>'
-        + '<td class="mono dim">' + dt(u.created_at) + '</td>'
-        + '<td style="text-align:right;white-space:nowrap">'
-          + '<button class="btn btn-primary btn-sm" data-appr="' + u.id + '">Aprovar</button> '
-          + '<button class="btn btn-ghost btn-sm" data-rej="' + u.id + '">Recusar</button>'
-          + '</td>'
-        + '</tr>';
-    });
-    $('tblPend').innerHTML = h + '</tbody>';
-
-    [].forEach.call($('tblPend').querySelectorAll('[data-appr]'), function(b){
-      b.onclick = async function(){
-        b.disabled = true;
-        var r = await PTAuth.client.rpc('admin_set_approved', { target: b.dataset.appr, value: true });
-        if (r.error) { alert('Não foi possível aprovar: ' + r.error.message); b.disabled = false; return; }
-        loadUsers();
-      };
-    });
-    [].forEach.call($('tblPend').querySelectorAll('[data-rej]'), function(b){
-      b.onclick = async function(){
-        if (!confirm('Recusar esta conta? A pessoa não conseguirá entrar.')) return;
-        b.disabled = true;
-        var r = await PTAuth.client.rpc('admin_set_blocked', { target: b.dataset.rej, value: true });
-        if (r.error) { alert('Não foi possível recusar: ' + r.error.message); b.disabled = false; return; }
-        loadUsers();
-      };
-    });
-  }
-
-  function renderUsers(){
-    var q = $('qUser').value.trim().toLowerCase();
-    var list = q ? users.filter(function(u){
-      return (u.email || '').toLowerCase().indexOf(q) >= 0 || (u.nome || '').toLowerCase().indexOf(q) >= 0;
-    }) : users;
-
-    if (!list.length) { $('tblUsers').innerHTML = '<tbody><tr><td class="empty">Nenhum usuário.</td></tr></tbody>'; return; }
-
-    var h = '<thead><tr><th>Usuário</th><th>Situação</th><th>Último acesso</th><th></th></tr></thead><tbody>';
-    list.forEach(function(u){
-      var eu = u.id === me.id;
-      h += '<tr>'
-        + '<td><b>' + esc(u.nome || u.email || '—') + '</b>'
-          + (u.nome ? '<div class="dim" style="font-size:12px">' + esc(u.email) + '</div>' : '')
-          + '</td>'
-        + '<td>' + (u.is_admin ? '<span class="tag adm">admin</span> ' : '')
-          + (u.blocked ? '<span class="tag blk">bloqueado</span>'
-             : isPending(u) ? '<span class="tag blk" style="background:rgba(245,158,11,.16);color:#ffd79a">pendente</span>'
-             : '<span class="tag ok">ativo</span>') + '</td>'
-        + '<td class="mono dim">' + dt(u.last_seen) + '</td>'
-        + '<td style="text-align:right">'
-          + (eu ? '<span class="dim" style="font-size:12px">você</span>'
-                : '<button class="btn btn-ghost btn-sm" data-blk="' + u.id + '" data-v="' + (u.blocked ? '0' : '1') + '">'
-                  + (u.blocked ? 'Desbloquear' : 'Bloquear') + '</button>')
-          + '</td>'
-        + '</tr>';
-    });
-    $('tblUsers').innerHTML = h + '</tbody>';
-
-    [].forEach.call($('tblUsers').querySelectorAll('[data-blk]'), function(b){
-      b.onclick = async function(){
-        b.disabled = true;
-        var r = await PTAuth.client.rpc('admin_set_blocked', { target: b.dataset.blk, value: b.dataset.v === '1' });
-        if (r.error) { alert('Não foi possível alterar: ' + r.error.message); b.disabled = false; return; }
-        loadUsers();
-      };
-    });
-  }
-
-  function renderStats(){
-    var pend = users.filter(isPending).length;
-    var ativos = users.filter(function(u){ return !u.blocked && !isPending(u); }).length;
-    var hoje = users.filter(function(u){
-      return u.last_seen && (Date.now() - new Date(u.last_seen)) < 864e5;
-    }).length;
+  async function loadResumo(){
+    var r = await PTAuth.client.rpc('admin_resumo');
+    var d = r.data || {};
     $('stats').innerHTML =
-        '<div class="stat"><div class="k">Usuários</div><div class="v">' + users.length + '</div></div>'
-      + '<div class="stat"><div class="k">Ativos</div><div class="v">' + ativos + '</div></div>'
-      + '<div class="stat"><div class="k">Pendentes</div><div class="v">' + pend + '</div></div>'
-      + '<div class="stat"><div class="k">Entraram hoje</div><div class="v">' + hoje + '</div></div>';
+        '<div class="stat"><div class="k">Acessos</div><div class="v">'+(d.total_visitas||0)+'</div></div>'
+      + '<div class="stat"><div class="k">Pessoas</div><div class="v">'+(d.total_pessoas||0)+'</div></div>'
+      + '<div class="stat"><div class="k">Acessos hoje</div><div class="v">'+(d.visitas_hoje||0)+'</div></div>'
+      + '<div class="stat"><div class="k">Novas hoje</div><div class="v">'+(d.pessoas_hoje||0)+'</div></div>';
   }
 
-  /* ---------- acessos ---------- */
+  async function loadPeople(){
+    var r = await PTAuth.client.rpc('admin_pessoas');
+    if(r.error){ $('tblPeople').innerHTML='<tbody><tr><td class="empty">Erro ao carregar: '+esc(r.error.message)+'</td></tr></tbody>'; return; }
+    people = r.data || [];
+    bars($('byArea'), groupCount(people,'area'));
+    bars($('byCity'), groupCount(people,'cidade').slice(0,10));
+    renderPeople();
+  }
+
+  function renderPeople(){
+    var q=$('qUser').value.trim().toLowerCase();
+    var list = q ? people.filter(function(u){
+      return [(u.nome||''),(u.area||''),(u.cidade||''),(u.contato||'')].join(' ').toLowerCase().indexOf(q)>=0;
+    }) : people;
+    if(!list.length){ $('tblPeople').innerHTML='<tbody><tr><td class="empty">Ninguém ainda.</td></tr></tbody>'; return; }
+    var h='<thead><tr><th>Nome</th><th>Área</th><th>Cidade</th><th>Contato</th><th>Acessos</th><th>Último</th></tr></thead><tbody>';
+    list.forEach(function(u){
+      h += '<tr><td><b>'+esc(u.nome||'—')+'</b></td>'
+         + '<td class="dim">'+esc(u.area||'—')+'</td>'
+         + '<td class="dim">'+esc(u.cidade||'—')+'</td>'
+         + '<td>'+esc(u.contato||'—')+'</td>'
+         + '<td class="mono">'+(u.visitas||0)+'</td>'
+         + '<td class="mono dim">'+dt(u.ultimo_acesso)+'</td></tr>';
+    });
+    $('tblPeople').innerHTML=h+'</tbody>';
+  }
 
   async function loadLog(){
-    var dias = +$('fPeriod').value;
-    var q = PTAuth.client.from('access_log').select('*').order('created_at', {ascending:false}).limit(300);
-    if (dias > 0) q = q.gte('created_at', new Date(Date.now() - dias * 864e5).toISOString());
-    var r = await q;
-    if (r.error) { $('tblLog').innerHTML = '<tbody><tr><td class="empty">Erro ao carregar: ' + esc(r.error.message) + '</td></tr></tbody>'; return; }
-
-    var list = r.data || [];
-    if (!list.length) { $('tblLog').innerHTML = '<tbody><tr><td class="empty">Nenhum acesso no período.</td></tr></tbody>'; return; }
-
-    var h = '<thead><tr><th>Quando</th><th>Usuário</th><th>Aparelho</th></tr></thead><tbody>';
+    var r = await PTAuth.client.from('visitas').select('*').order('ocorreu_em',{ascending:false}).limit(150);
+    if(r.error){ $('tblLog').innerHTML='<tbody><tr><td class="empty">Erro ao carregar: '+esc(r.error.message)+'</td></tr></tbody>'; return; }
+    var list=r.data||[];
+    if(!list.length){ $('tblLog').innerHTML='<tbody><tr><td class="empty">Nenhum acesso ainda.</td></tr></tbody>'; return; }
+    var h='<thead><tr><th>Quando</th><th>Nome</th><th>Área</th><th>Aparelho</th></tr></thead><tbody>';
     list.forEach(function(a){
-      h += '<tr><td class="mono">' + dt(a.created_at) + '</td>'
-         + '<td>' + esc(a.email || '—') + '</td>'
-         + '<td class="dim">' + esc(device(a.user_agent)) + '</td></tr>';
+      h += '<tr><td class="mono">'+dt(a.ocorreu_em)+'</td>'
+         + '<td>'+esc(a.nome||'—')+'</td>'
+         + '<td class="dim">'+esc(a.area||'—')+'</td>'
+         + '<td class="dim">'+esc(device(a.user_agent))+'</td></tr>';
     });
-    $('tblLog').innerHTML = h + '</tbody>';
+    $('tblLog').innerHTML=h+'</tbody>';
   }
-
-  /* ---------- início ---------- */
 
   (async function(){
     var ctx = await PTAuth.protectAdmin();
-    if (!ctx) return;                       // protectAdmin já redirecionou
-    me = ctx.profile;
-    $('wrap').style.visibility = 'visible';
-    $('back').onclick = function(){ location.href = 'index.html'; };
-    $('out').onclick  = function(){ PTAuth.signOut(); };
-    $('qUser').addEventListener('input', renderUsers);
-    $('fPeriod').addEventListener('change', loadLog);
-    await loadUsers();
+    if(!ctx) return;
+    $('wrap').style.visibility='visible';
+    $('back').onclick=function(){ location.href='index.html'; };
+    $('out').onclick=function(){ PTAuth.signOut(); };
+    $('qUser').addEventListener('input', renderPeople);
+    await loadResumo();
+    await loadPeople();
     await loadLog();
   })();
 })();
