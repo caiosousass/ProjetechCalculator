@@ -1,5 +1,5 @@
 // Projetech Calc — service worker (offline cache)
-const CACHE = 'projetech-v91';
+const CACHE = 'projetech-v92';
 const ASSETS = [
   './',
   'index.html',
@@ -13,6 +13,7 @@ const ASSETS = [
   'auth.js',
   'auth.css',
   'manifest.json',
+  'manifest-admin.json',
   'logo.png',
   'logo-mark.png',
   'logo1.png',
@@ -21,6 +22,8 @@ const ASSETS = [
   'logo4.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
+  'icons/icon-admin-192.png',
+  'icons/icon-admin-512.png',
   'fonts/montserrat-300.woff2',
   'fonts/montserrat-400.woff2',
   'fonts/montserrat-700.woff2'

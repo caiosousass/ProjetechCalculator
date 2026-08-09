@@ -1,0 +1,16 @@
+{
+  "name": "Projetech Admin",
+  "short_name": "Admin",
+  "description": "Painel de administração da Projetech Calculator.",
+  "start_url": "login.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icons/icon-admin-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-admin-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
