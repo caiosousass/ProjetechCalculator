@@ -144,4 +144,4 @@ grant execute on function public.admin_pessoas() to authenticated;
 -- ============================================================
 -- 5. Defina o administrador (troque o e-mail se for outro)
 -- ============================================================
-update public.profiles set is_admin = true where email = 'caio20334@gmail.com';
+update public.profiles set is_admin = true where email = 'caio@projetech.com.br';
