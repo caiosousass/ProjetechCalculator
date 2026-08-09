@@ -17,6 +17,11 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
+-- Coluna de aprovação (auto-cadastro com liberação pelo admin).
+-- Vem separada porque, em bancos que já tinham a tabela, o "create table if not
+-- exists" acima não adiciona colunas novas — este alter garante que ela exista.
+alter table public.profiles add column if not exists approved boolean not null default false;
+
 -- Uma linha por entrada no app.
 create table if not exists public.access_log (
   id         bigint generated always as identity primary key,
@@ -124,6 +129,20 @@ begin
 end
 $$;
 
+create or replace function public.admin_set_approved(target uuid, value boolean)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Apenas administradores podem aprovar usuários.';
+  end if;
+  update public.profiles set approved = value where id = target;
+end
+$$;
+
 create or replace function public.admin_set_admin(target uuid, value boolean)
 returns void
 language plpgsql
@@ -146,5 +165,8 @@ $$;
 -- ============================================================
 
 update public.profiles
-set is_admin = true
+set is_admin = true, approved = true
 where email = 'caio20334@gmail.com';
+
+-- Administradores nunca ficam pendentes.
+update public.profiles set approved = true where is_admin = true;

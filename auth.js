@@ -48,10 +48,29 @@
       localStorage.removeItem(FLAG);
       throw new Error('Este usuário está bloqueado. Fale com o administrador.');
     }
+    if (prof && prof.approved === false) {
+      await api.client.auth.signOut();
+      localStorage.removeItem(FLAG);
+      throw new Error('Sua conta ainda não foi aprovada pelo administrador.');
+    }
 
     localStorage.setItem(FLAG, '1');
     await api.logAccess(r.data.session);
     return r.data.session;
+  };
+
+  // Auto-cadastro. Cria a conta em estado "pendente" (approved=false no banco);
+  // quem libera é o admin pelo painel. Não deixa sessão aberta pra conta pendente.
+  api.signUp = async function (nome, email, senha) {
+    if (!api.client) throw new Error('Cadastro não configurado.');
+    var r = await api.client.auth.signUp({
+      email: email, password: senha, options: { data: { nome: nome } }
+    });
+    if (r.error) throw r.error;
+    var precisaEmail = !(r.data && r.data.session);   // true = projeto ainda exige confirmar e-mail
+    try { await api.client.auth.signOut(); } catch (e) {}
+    localStorage.removeItem(FLAG);
+    return { precisaEmail: precisaEmail };
   };
 
   api.signOut = async function () {
@@ -103,6 +122,11 @@
     var prof = await api.profile(s);
     if (prof && prof.blocked) {
       alert('Seu acesso foi bloqueado pelo administrador.');
+      await api.signOut();
+      return null;
+    }
+    if (prof && prof.approved === false) {
+      alert('Sua conta ainda não foi aprovada pelo administrador.');
       await api.signOut();
       return null;
     }

@@ -25,14 +25,19 @@
 
   <div class="stats" id="stats"></div>
 
+  <div class="card" id="pendCard" style="display:none;border-color:rgba(245,158,11,.5)">
+    <h3 style="color:var(--warn)">Contas pendentes · <span id="pendCount">0</span></h3>
+    <div class="tbl-wrap"><table class="adm" id="tblPend"></table></div>
+    <div class="hint">Alguém criou uma conta e aguarda sua liberação. <b>Aprovar</b> libera o acesso; <b>Recusar</b> bloqueia a entrada.</div>
+  </div>
+
   <div class="card">
     <h3>Usuários</h3>
     <div class="field"><input type="text" id="qUser" placeholder="Filtrar por nome ou e-mail…"></div>
     <div class="tbl-wrap"><table class="adm" id="tblUsers"></table></div>
     <div class="hint">
-      Para <b>criar</b> um usuário: painel do Supabase → Authentication → Users → Add user
-      (marque "Auto Confirm User"). Ele aparece aqui no próximo carregamento.
-      Bloquear impede a entrada pelo app; para cortar o acesso em definitivo, apague o usuário no painel do Supabase.
+      Novos usuários entram sozinhos pela tela de login (<b>Criar conta</b>) e ficam pendentes até você aprovar aqui.
+      Bloquear impede a entrada pelo app.
     </div>
   </div>
 
@@ -91,8 +96,52 @@
     var r = await PTAuth.client.from('profiles').select('*').order('created_at', {ascending:true});
     if (r.error) { $('tblUsers').innerHTML = '<tbody><tr><td class="empty">Erro ao carregar: ' + esc(r.error.message) + '</td></tr></tbody>'; return; }
     users = r.data || [];
+    renderPending();
     renderUsers();
     renderStats();
+  }
+
+  // approved pode não existir ainda (banco sem a migração): trata ausência como aprovado,
+  // p/ não marcar todo mundo como pendente por engano.
+  function isPending(u){ return u.approved === false; }
+
+  function renderPending(){
+    var pend = users.filter(isPending);
+    $('pendCount').textContent = pend.length;
+    $('pendCard').style.display = pend.length ? '' : 'none';
+    if (!pend.length) { $('tblPend').innerHTML = ''; return; }
+
+    var h = '<thead><tr><th>Nome</th><th>E-mail</th><th>Quando</th><th></th></tr></thead><tbody>';
+    pend.forEach(function(u){
+      h += '<tr>'
+        + '<td><b>' + esc(u.nome || '—') + '</b></td>'
+        + '<td>' + esc(u.email || '—') + '</td>'
+        + '<td class="mono dim">' + dt(u.created_at) + '</td>'
+        + '<td style="text-align:right;white-space:nowrap">'
+          + '<button class="btn btn-primary btn-sm" data-appr="' + u.id + '">Aprovar</button> '
+          + '<button class="btn btn-ghost btn-sm" data-rej="' + u.id + '">Recusar</button>'
+          + '</td>'
+        + '</tr>';
+    });
+    $('tblPend').innerHTML = h + '</tbody>';
+
+    [].forEach.call($('tblPend').querySelectorAll('[data-appr]'), function(b){
+      b.onclick = async function(){
+        b.disabled = true;
+        var r = await PTAuth.client.rpc('admin_set_approved', { target: b.dataset.appr, value: true });
+        if (r.error) { alert('Não foi possível aprovar: ' + r.error.message); b.disabled = false; return; }
+        loadUsers();
+      };
+    });
+    [].forEach.call($('tblPend').querySelectorAll('[data-rej]'), function(b){
+      b.onclick = async function(){
+        if (!confirm('Recusar esta conta? A pessoa não conseguirá entrar.')) return;
+        b.disabled = true;
+        var r = await PTAuth.client.rpc('admin_set_blocked', { target: b.dataset.rej, value: true });
+        if (r.error) { alert('Não foi possível recusar: ' + r.error.message); b.disabled = false; return; }
+        loadUsers();
+      };
+    });
   }
 
   function renderUsers(){
@@ -111,7 +160,9 @@
           + (u.nome ? '<div class="dim" style="font-size:12px">' + esc(u.email) + '</div>' : '')
           + '</td>'
         + '<td>' + (u.is_admin ? '<span class="tag adm">admin</span> ' : '')
-          + (u.blocked ? '<span class="tag blk">bloqueado</span>' : '<span class="tag ok">ativo</span>') + '</td>'
+          + (u.blocked ? '<span class="tag blk">bloqueado</span>'
+             : isPending(u) ? '<span class="tag blk" style="background:rgba(245,158,11,.16);color:#ffd79a">pendente</span>'
+             : '<span class="tag ok">ativo</span>') + '</td>'
         + '<td class="mono dim">' + dt(u.last_seen) + '</td>'
         + '<td style="text-align:right">'
           + (eu ? '<span class="dim" style="font-size:12px">você</span>'
@@ -133,13 +184,15 @@
   }
 
   function renderStats(){
-    var ativos = users.filter(function(u){ return !u.blocked; }).length;
+    var pend = users.filter(isPending).length;
+    var ativos = users.filter(function(u){ return !u.blocked && !isPending(u); }).length;
     var hoje = users.filter(function(u){
       return u.last_seen && (Date.now() - new Date(u.last_seen)) < 864e5;
     }).length;
     $('stats').innerHTML =
         '<div class="stat"><div class="k">Usuários</div><div class="v">' + users.length + '</div></div>'
       + '<div class="stat"><div class="k">Ativos</div><div class="v">' + ativos + '</div></div>'
+      + '<div class="stat"><div class="k">Pendentes</div><div class="v">' + pend + '</div></div>'
       + '<div class="stat"><div class="k">Entraram hoje</div><div class="v">' + hoje + '</div></div>';
   }
 

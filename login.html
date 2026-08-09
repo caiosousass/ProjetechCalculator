@@ -21,6 +21,10 @@
 
     <div class="card">
       <form id="form" autocomplete="on">
+        <div class="field" id="fldNome" style="display:none">
+          <label for="nome">Nome</label>
+          <input type="text" id="nome" autocomplete="name" placeholder="Seu nome">
+        </div>
         <div class="field">
           <label for="email">E-mail</label>
           <input type="email" id="email" inputmode="email" autocomplete="username" placeholder="voce@empresa.com" required>
@@ -32,7 +36,10 @@
         <button class="btn btn-primary" id="go" type="submit" style="margin-top:16px">Entrar</button>
       </form>
       <div class="msg" id="msg"></div>
-      <div class="hint" id="hint">Não tem acesso? Peça ao administrador para criar seu usuário.</div>
+      <div class="hint" id="hint">
+        <span id="hintText">Não tem acesso?</span>
+        <a href="#" id="toggle" style="color:var(--acc2);font-weight:700">Criar conta</a>
+      </div>
     </div>
   </div>
 </div>
@@ -44,35 +51,82 @@
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var msg = $('msg'), form = $('form'), go = $('go');
+  var mode = 'login';   // 'login' | 'signup'
 
   function show(text, kind){ msg.className = 'msg ' + (kind || 'err'); msg.textContent = text; }
 
   // Login desligado (supabase-config.js vazio): não faz sentido segurar ninguém aqui.
   if (!PTAuth.configured) {
     form.style.display = 'none';
+    $('toggle').style.display = 'none';
     show('O login ainda não foi configurado. Preencha supabase-config.js com a URL e a chave anon do projeto.', 'warn');
-    $('hint').innerHTML = '<a href="index.html" style="color:var(--acc2)">Ir para a calculadora</a>';
-  } else {
-    // Já logado? Vai direto pro app.
-    PTAuth.session().then(function(s){ if (s) location.replace('index.html'); });
+    $('hintText').innerHTML = '<a href="index.html" style="color:var(--acc2)">Ir para a calculadora</a>';
+    return;
+  }
 
-    form.addEventListener('submit', async function(e){
-      e.preventDefault();
-      msg.className = 'msg';
-      go.disabled = true; go.textContent = 'Entrando…';
+  // Já logado? Vai direto pro app.
+  PTAuth.session().then(function(s){ if (s) location.replace('index.html'); });
+
+  function setMode(m){
+    mode = m;
+    msg.className = 'msg';
+    $('fldNome').style.display = m === 'signup' ? '' : 'none';
+    $('senha').setAttribute('autocomplete', m === 'signup' ? 'new-password' : 'current-password');
+    go.textContent = m === 'signup' ? 'Criar conta' : 'Entrar';
+    $('hintText').textContent = m === 'signup' ? 'Já tem acesso?' : 'Não tem acesso?';
+    $('toggle').textContent = m === 'signup' ? 'Entrar' : 'Criar conta';
+    document.querySelector('.login-sub').textContent = m === 'signup'
+      ? 'Crie sua conta — o acesso é liberado pelo administrador'
+      : 'Acesso restrito à equipe';
+  }
+
+  $('toggle').addEventListener('click', function(e){
+    e.preventDefault();
+    setMode(mode === 'login' ? 'signup' : 'login');
+  });
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    msg.className = 'msg';
+    var email = $('email').value.trim(), senha = $('senha').value;
+
+    if (mode === 'signup') {
+      var nome = $('nome').value.trim();
+      if (!nome) { show('Informe seu nome.', 'err'); return; }
+      if (senha.length < 6) { show('A senha precisa ter ao menos 6 caracteres.', 'err'); return; }
+      go.disabled = true; go.textContent = 'Criando…';
       try {
-        await PTAuth.signIn($('email').value.trim(), $('senha').value);
-        location.replace('index.html');
+        var r = await PTAuth.signUp(nome, email, senha);
+        form.style.display = 'none'; $('toggle').style.display = 'none';
+        show(r.precisaEmail
+          ? 'Conta criada! Confirme pelo link enviado ao seu e-mail e aguarde o administrador liberar o acesso.'
+          : 'Conta criada! Assim que o administrador aprovar, você já poderá entrar.', 'ok');
       } catch (err) {
-        var t = (err && err.message) || 'Não foi possível entrar.';
-        if (/invalid login credentials/i.test(t)) t = 'E-mail ou senha incorretos.';
-        else if (/email not confirmed/i.test(t)) t = 'E-mail ainda não confirmado. Peça ao administrador para confirmar o usuário.';
+        var t = (err && err.message) || 'Não foi possível criar a conta.';
+        if (/already registered|already exists|user_already/i.test(t)) t = 'Já existe uma conta com esse e-mail.';
+        else if (/password/i.test(t)) t = 'Senha muito curta — use ao menos 6 caracteres.';
+        else if (/valid email|invalid.*email/i.test(t)) t = 'E-mail inválido.';
         else if (/failed to fetch|network/i.test(t)) t = 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
         show(t, 'err');
-        go.disabled = false; go.textContent = 'Entrar';
+        go.disabled = false; go.textContent = 'Criar conta';
       }
-    });
-  }
+      return;
+    }
+
+    go.disabled = true; go.textContent = 'Entrando…';
+    try {
+      await PTAuth.signIn(email, senha);
+      location.replace('index.html');
+    } catch (err) {
+      var t2 = (err && err.message) || 'Não foi possível entrar.';
+      if (/invalid login credentials/i.test(t2)) t2 = 'E-mail ou senha incorretos.';
+      else if (/não foi aprovada/i.test(t2)) { /* mantém a mensagem amigável do auth.js */ }
+      else if (/email not confirmed/i.test(t2)) t2 = 'E-mail ainda não confirmado. Confirme pelo link enviado ao seu e-mail.';
+      else if (/failed to fetch|network/i.test(t2)) t2 = 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
+      show(t2, 'err');
+      go.disabled = false; go.textContent = 'Entrar';
+    }
+  });
 })();
 </script>
 </body>
