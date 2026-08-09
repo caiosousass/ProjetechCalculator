@@ -1030,9 +1030,18 @@ function calcPixel(){
   if(!isNaN(mmax)) html+=S('Consumo máximo', `${fmt(modules*mmax/1000,2)}<small> kW</small>`);
   $('pixelResults').innerHTML=html;
 
-  drawScene(wM,hM);
   pmeta={totPxW,totPxH,cols,rows,pxw,pxh,pitch};
-  drawTest();
+  drawTest();               // atualiza baseCv (imagem de teste) antes do preview usá-la
+  drawScene(wM,hM);
+}
+// Miniatura da imagem de teste (a partir do baseCv) p/ preencher o painel no preview.
+function panelThumb(){
+  if(!baseCv || !baseCv.width || !baseCv.height) return null;
+  const maxW=380, sc=Math.min(1, maxW/baseCv.width);
+  const w=Math.max(1,Math.round(baseCv.width*sc)), h=Math.max(1,Math.round(baseCv.height*sc));
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const x=c.getContext('2d'); x.drawImage(baseCv,0,0,w,h);
+  try{ return c.toDataURL('image/jpeg',0.85); }catch(e){ return null; }
 }
 let showPerson=true, personHeight=1.7;
 let pixMode='single';                 // 'single' (canvas único) ou 'slices' — usado já no drawTest
@@ -1055,18 +1064,25 @@ function drawScene(wM,hM){
   if(!(wM>0)||!(hM>0)){svg.innerHTML='';return;}
   const fx=n=>n.toFixed(1);
   const availW0=Math.max(220,(cont.clientWidth||320)-28), maxH0=210, top0=10, bottom0=8;
+  const thumb=panelThumb();   // imagem de teste em miniatura (ou null se ainda não houver)
+  // painel: mostra o conteúdo de teste (se houver) e a borda por cima; senão, caixa azul + medida
+  const panelFill=(x0,y0,w,h)=>{
+    const border=`<rect x="${fx(x0)}" y="${fx(y0)}" width="${fx(w)}" height="${fx(h)}" rx="4" fill="none" stroke="#3d7bff" stroke-width="2"/>`;
+    if(thumb) return `<image x="${fx(x0)}" y="${fx(y0)}" width="${fx(w)}" height="${fx(h)}" preserveAspectRatio="none" href="${thumb}"/>`+border;
+    const lbl=w>72?`<text x="${fx(x0+w/2)}" y="${fx(y0+h/2)}" fill="#93a0c7" font-size="12" text-anchor="middle" dominant-baseline="middle">${fmt(wM,2)}m × ${fmt(hM,2)}m</text>`:'';
+    return `<rect x="${fx(x0)}" y="${fx(y0)}" width="${fx(w)}" height="${fx(h)}" rx="4" fill="rgba(61,123,255,.14)" stroke="#3d7bff" stroke-width="2"/>`+lbl;
+  };
 
   // sem pessoa: só o painel
   if(!showPerson){
     const pad=12;
     let s=Math.max(6,Math.min((availW0-pad)/wM,(maxH0-top0-bottom0)/hM));
     const panelW=wM*s, panelH=hM*s, ground=top0+panelH, H=ground+bottom0, W=panelW+pad;
-    const lbl=panelW>72?`<text x="${fx(panelW/2)}" y="${fx(top0+panelH/2)}" fill="#93a0c7" font-size="12" text-anchor="middle" dominant-baseline="middle">${fmt(wM,2)}m × ${fmt(hM,2)}m</text>`:'';
     svg.setAttribute('viewBox',`0 0 ${W.toFixed(0)} ${H.toFixed(0)}`);
     svg.setAttribute('width',W.toFixed(0)); svg.setAttribute('height',H.toFixed(0));
     svg.style.maxWidth='100%'; svg.style.height='auto';
     svg.innerHTML=`<line x1="0" y1="${fx(ground)}" x2="${fx(W)}" y2="${fx(ground)}" stroke="#26325a" stroke-width="1"/>`+
-      `<rect x="0" y="${fx(top0)}" width="${fx(panelW)}" height="${fx(panelH)}" rx="4" fill="rgba(61,123,255,.14)" stroke="#3d7bff" stroke-width="2"/>`+lbl;
+      panelFill(0,top0,panelW,panelH);
     return;
   }
 
@@ -1099,9 +1115,7 @@ function drawScene(wM,hM){
     `<polygon points="${fx(dimX-3)},${fx(ground-7)} ${fx(dimX+3)},${fx(ground-7)} ${fx(dimX)},${fx(ground-1)}" fill="${dc}"/>`+
     `<text x="${fx(dimX+11)}" y="${fx(my)}" fill="${dc}" font-size="12" font-weight="700" text-anchor="middle" transform="rotate(-90 ${fx(dimX+11)} ${fx(my)})">${fmt(personH,2)} m</text>`;
 
-  const panelLbl = panelW>72 ? `<text x="${fx(panelW/2)}" y="${fx(panelY+panelH/2)}" fill="#93a0c7" font-size="12" text-anchor="middle" dominant-baseline="middle">${fmt(wM,2)}m × ${fmt(hM,2)}m</text>` : '';
-  const panel=
-    `<rect x="0" y="${fx(panelY)}" width="${fx(panelW)}" height="${fx(panelH)}" rx="4" fill="rgba(61,123,255,.14)" stroke="#3d7bff" stroke-width="2"/>`+panelLbl;
+  const panel=panelFill(0,panelY,panelW,panelH);
 
   const groundLine=`<line x1="0" y1="${fx(ground)}" x2="${fx(W)}" y2="${fx(ground)}" stroke="#26325a" stroke-width="1"/>`;
 
