@@ -1,5 +1,5 @@
 // Projetech Calc — service worker (offline cache)
-const CACHE = 'projetech-v94';
+const CACHE = 'projetech-v95';
 const ASSETS = [
   './',
   'index.html',
@@ -9,6 +9,7 @@ const ASSETS = [
   'nova-senha.html',
   'equipment.js',
   'mp4-muxer.min.js',
+  'jspdf.umd.min.js',
   'supabase.min.js',
   'supabase-config.js',
   'auth.js',

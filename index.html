@@ -442,6 +442,20 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="results" id="sliceTotal"></div>
     </div>
     </div>
+
+    <div class="card">
+      <h3>Exportar ficha (PDF)</h3>
+      <details class="ref-card">
+        <summary>Dados da ficha (opcional)</summary>
+        <div style="margin-top:12px">
+          <div class="field"><label>Cliente</label><input type="text" id="pdfCliente" placeholder="Nome do cliente"></div>
+          <div class="field"><label>Evento</label><input type="text" id="pdfEvento" placeholder="Nome do evento"></div>
+          <div class="field"><label>Responsável</label><input type="text" id="pdfResp" placeholder="Quem preencheu"></div>
+        </div>
+      </details>
+      <button class="btn btn-primary" id="pdfExport" style="margin-top:12px">Baixar PDF</button>
+      <div class="hint">Gera uma ficha com a marca Projetech a partir dos dados atuais. Campos em branco não aparecem.</div>
+    </div>
     </div>
 
     <div id="pixelMap" style="display:none">
@@ -2498,6 +2512,122 @@ if('serviceWorker' in navigator){
     PTVisit.logVisit(false);   // conta a entrada (respeitando o intervalo anti-refresh)
     PTVisit.flush();           // sobe o que ficou pendente offline
   }
+})();
+</script>
+
+<script>
+/* ===== Exportar ficha do Pixel Map em PDF ===== */
+(function(){
+  var btn = document.getElementById('pdfExport');
+  if(!btn) return;
+
+  function loadJsPDF(){
+    return new Promise(function(res,rej){
+      if(window.jspdf && window.jspdf.jsPDF) return res();
+      var s=document.createElement('script'); s.src='jspdf.umd.min.js';
+      s.onload=function(){ res(); }; s.onerror=function(){ rej(new Error('Falha ao carregar o gerador de PDF.')); };
+      document.head.appendChild(s);
+    });
+  }
+  function loadImg(src){ return new Promise(function(res,rej){ var i=new Image(); i.onload=function(){res(i);}; i.onerror=rej; i.src=src; }); }
+  function svgToPng(svg){
+    return new Promise(function(res,rej){
+      var xml=new XMLSerializer().serializeToString(svg);
+      var url='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(xml)));
+      var img=new Image();
+      img.onload=function(){
+        var vb=svg.viewBox && svg.viewBox.baseVal, w=(vb&&vb.width)||520, h=(vb&&vb.height)||300, sc=2;
+        var c=document.createElement('canvas'); c.width=w*sc; c.height=h*sc;
+        var ctx=c.getContext('2d'); ctx.fillStyle='#05101c'; ctx.fillRect(0,0,c.width,c.height);
+        ctx.drawImage(img,0,0,c.width,c.height);
+        res({data:c.toDataURL('image/png'), ratio:h/w});
+      };
+      img.onerror=rej; img.src=url;
+    });
+  }
+  // Bloco chave→valor: rótulo à esquerda, valor à direita, com linha fina.
+  function kv(doc,M,PW,y,rows){
+    doc.setFontSize(10);
+    rows.forEach(function(r){
+      if(y>282){ doc.addPage(); y=16; }
+      doc.setTextColor(110); doc.setFont('helvetica','normal'); doc.text(String(r[0]), M, y);
+      doc.setTextColor(30);  doc.setFont('helvetica','bold');   doc.text(String(r[1]), PW-M, y, {align:'right'});
+      doc.setDrawColor(235); doc.line(M, y+2, PW-M, y+2);
+      y+=7;
+    });
+    return y;
+  }
+  function head(doc,M,PW,y,txt){ doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(60); doc.text(txt,M,y); return y+5; }
+
+  btn.onclick=async function(){
+    var original=btn.textContent; btn.disabled=true; btn.textContent='Gerando…';
+    try{
+      await loadJsPDF();
+      var jsPDF=window.jspdf.jsPDF;
+      var doc=new jsPDF({unit:'mm',format:'a4',compress:true});
+      var PW=doc.internal.pageSize.getWidth(), M=14, y=14;
+
+      // cabeçalho
+      try{ var logo=await loadImg('logo.png'); var lh=12, lw=lh*(logo.width/logo.height); doc.addImage(logo,'PNG',M,y,lw,lh); }catch(e){}
+      var date=new Date().toLocaleDateString('pt-BR');
+      doc.setFontSize(9); doc.setTextColor(120); doc.text(date, PW-M, y+4, {align:'right'});
+      y+=18;
+      doc.setTextColor(20); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('Ficha Técnica — Pixel Map', M, y); y+=6;
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(120); doc.text('Painel de LED · gerado pela Projetech Calculator', M, y); y+=6;
+      doc.setDrawColor(210); doc.line(M,y,PW-M,y); y+=8;
+
+      var $ = function(id){ return document.getElementById(id); };
+
+      // cliente/evento (opcional)
+      var cliente=$('pdfCliente').value.trim(), evento=$('pdfEvento').value.trim(), resp=$('pdfResp').value.trim();
+      var meta=[]; if(cliente)meta.push(['Cliente',cliente]); if(evento)meta.push(['Evento',evento]); if(resp)meta.push(['Responsável',resp]);
+      if(meta.length){ y=kv(doc,M,PW,y,meta); y+=6; }
+
+      // configuração
+      var slices = $('pxSlices').style.display!=='none';
+      var cfg=[];
+      if(slices){
+        cfg.push(['Modo','Múltiplos canvas']);
+        cfg.push(['Canvas total', $('cvW').value+' × '+$('cvH').value+' px']);
+        cfg.push(['Qtd. de canvas', String(document.querySelectorAll('#sliceList .slice').length)]);
+      }else{
+        var sel=$('preset'), modelo=(sel && sel.options[sel.selectedIndex])?sel.options[sel.selectedIndex].text:'—';
+        cfg.push(['Modelo', modelo]);
+        cfg.push(['Parede', $('wallw').value+' × '+$('wallh').value+' m']);
+      }
+      y=head(doc,M,PW,y,'Configuração'); y=kv(doc,M,PW,y,cfg); y+=6;
+
+      // resultado (lê os cartões da tela)
+      var cont = slices ? $('sliceTotal') : $('pixelResults');
+      var stats=[].slice.call(cont.querySelectorAll('.stat')).map(function(s){
+        var k=s.querySelector('.k'), v=s.querySelector('.v');
+        return [k?k.textContent.trim():'', v?v.textContent.replace(/\s+/g,' ').trim():''];
+      }).filter(function(r){ return r[0]; });
+      if(stats.length){ y=head(doc,M,PW,y,'Resultado'); y=kv(doc,M,PW,y,stats); y+=6; }
+
+      // composição (só no modo Múltiplos canvas)
+      if(slices){
+        var svg=$('sliceSvg');
+        if(svg && svg.querySelector('rect')){
+          try{
+            var png=await svgToPng(svg);
+            var iw=PW-2*M, ih=iw*(png.ratio||0.5);
+            if(y+ih>288){ doc.addPage(); y=16; }
+            y=head(doc,M,PW,y,'Composição'); y+=1;
+            doc.addImage(png.data,'PNG',M,y,iw,ih); y+=ih+4;
+          }catch(e){}
+        }
+      }
+
+      doc.setFontSize(8); doc.setTextColor(150); doc.text('Projetech Eventos · Projetech Calculator', M, 290);
+      var fname = (evento||cliente) ? ('Pixel Map - '+(evento||cliente)) : 'Projetech - Pixel Map';
+      doc.save(fname+'.pdf');
+    }catch(err){
+      alert('Não foi possível gerar o PDF: '+((err&&err.message)||err));
+    }finally{
+      btn.disabled=false; btn.textContent=original;
+    }
+  };
 })();
 </script>
 </body>
