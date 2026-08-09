@@ -322,7 +322,6 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     </nav>
     <div class="side-foot" id="sideFoot">
       <div class="who" id="whoAmI"></div>
-      <button id="goAdmin"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.4-3 8.3-7 10-4-1.7-7-5.6-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Administração</span></button>
       <button id="doTrocar"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg><span>Trocar meus dados</span></button>
     </div>
     <button class="collapse-btn" id="collapseBtn" aria-label="Recolher menu" title="Recolher / expandir">
@@ -2485,11 +2484,10 @@ if('serviceWorker' in navigator){
 <script src="auth.js"></script>
 <script>
 /* Ferramenta aberta: registra a entrada (com fila offline) e mostra a identidade
-   no rodapé. O atalho de Administração leva ao login — só o admin entra. */
+   no rodapé. O painel de admin fica só no atalho separado (login.html). */
 (function(){
   if(!window.PT_SUPABASE || !PT_SUPABASE.url || !PT_SUPABASE.anonKey) return;   // não configurado: app 100% livre
   var foot = document.getElementById('sideFoot');
-  document.getElementById('goAdmin').onclick = ()=>{ location.href = 'login.html'; };
   document.getElementById('doTrocar').onclick = ()=>{
     if(confirm('Trocar seus dados de identificação?')){ localStorage.removeItem('pt_visitor'); location.replace('acesso.html'); }
   };
