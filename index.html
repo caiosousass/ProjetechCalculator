@@ -2852,15 +2852,17 @@ if('serviceWorker' in navigator){
     else if(s>0){ cur.value=v.slice(0,s-1)+v.slice(e); try{ cur.setSelectionRange(s-1,s-1); }catch(_){} }
     cur.dispatchEvent(new Event('input',{bubbles:true}));
   }
-  // impede que tocar na barra tire o foco do campo
-  bar.addEventListener('mousedown', function(e){ e.preventDefault(); });
-  bar.addEventListener('touchstart', function(e){ e.preventDefault(); }, {passive:false});
+  function doBtn(b){
+    if(b.dataset.op!=null) insert(b.dataset.op);
+    else if(b.dataset.act==='bs') backspace();
+    else if(b.dataset.act==='ok'){ if(cur){ calcField(cur); cur.blur(); } }
+  }
+  // pointerdown resolve toque e mouse; preventDefault mantém o foco no campo
+  // (agir no pointerdown evita que o toque vire "blur" antes do clique)
+  bar.addEventListener('pointerdown', function(e){ if(e.target===bar) e.preventDefault(); });
   [].forEach.call(bar.querySelectorAll('button'), function(b){
-    b.addEventListener('click', function(){
-      if(b.dataset.op!=null) insert(b.dataset.op);
-      else if(b.dataset.act==='bs') backspace();
-      else if(b.dataset.act==='ok'){ if(cur){ calcField(cur); cur.blur(); } }
-    });
+    b.addEventListener('pointerdown', function(e){ e.preventDefault(); doBtn(b); });
+    b.addEventListener('click', function(e){ e.preventDefault(); });   // evita clique duplicado
   });
   function place(){
     var vv=window.visualViewport; if(!vv){ bar.style.bottom='0px'; return; }
