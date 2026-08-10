@@ -444,17 +444,36 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     </div>
 
     <div class="card">
-      <h3>Exportar ficha (PDF)</h3>
+      <h3>Exportar PDF</h3>
       <details class="ref-card">
         <summary>Dados da ficha (opcional)</summary>
         <div style="margin-top:12px">
+          <div class="field"><label>Nome do projeto</label><input type="text" id="pdfNome" placeholder="Ex.: Painel de LED (P2.9 mm)"></div>
           <div class="field"><label>Cliente</label><input type="text" id="pdfCliente" placeholder="Nome do cliente"></div>
-          <div class="field"><label>Evento</label><input type="text" id="pdfEvento" placeholder="Nome do evento"></div>
-          <div class="field"><label>Responsável</label><input type="text" id="pdfResp" placeholder="Quem preencheu"></div>
+          <div class="field"><label>Ambiente / evento</label><input type="text" id="pdfEvento" placeholder="Ex.: Plenária aberta"></div>
+          <div class="field"><label>Local</label><input type="text" id="pdfLocal" placeholder="Endereço / venue"></div>
+          <div class="field"><label>Responsável</label><input type="text" id="pdfResp" placeholder="Engenheiro(a) responsável"></div>
+          <div class="row">
+            <div class="field"><label>Ordem de serviço</label><input type="text" id="pdfOS" placeholder="Nº"></div>
+            <div class="field"><label>Nº da prancha</label><input type="text" id="pdfSheet" placeholder="01"></div>
+          </div>
+          <details class="ref-card" style="margin-top:4px"><summary style="font-size:12px">Vídeo (só na prancha)</summary>
+            <div style="margin-top:10px">
+              <div class="row">
+                <div class="field"><label>Software</label><input type="text" id="pdfSoft" placeholder="Resolume Arena"></div>
+                <div class="field"><label>Codec</label><input type="text" id="pdfCodec" placeholder="DXV3"></div>
+              </div>
+              <div class="row">
+                <div class="field"><label>Formato</label><input type="text" id="pdfFormato" placeholder=".MOV"></div>
+                <div class="field"><label>Imagem estática</label><input type="text" id="pdfImg" placeholder="PNG"></div>
+              </div>
+            </div>
+          </details>
         </div>
       </details>
-      <button class="btn btn-primary" id="pdfExport" style="margin-top:12px">Baixar PDF</button>
-      <div class="hint">Gera uma ficha com a marca Projetech a partir dos dados atuais. Campos em branco não aparecem.</div>
+      <button class="btn btn-primary" id="pdfPrancha" style="margin-top:12px">Baixar prancha técnica</button>
+      <button class="btn btn-ghost" id="pdfExport" style="margin-top:8px">Ficha simples (retrato)</button>
+      <div class="hint">A prancha é o desenho técnico (paisagem, com cotas e carimbo). A ficha simples é o resumo em retrato. Campos em branco não aparecem.</div>
     </div>
     </div>
 
@@ -2579,6 +2598,116 @@ if('serviceWorker' in navigator){
     return y;
   }
   function head(doc,M,PW,y,txt){ doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(60); doc.text(txt,M,y); return y+5; }
+
+  var val=function(id,d){ var e=document.getElementById(id); return (e&&e.value.trim())||d||''; };
+  function baseImgData(maxW){
+    if(!baseCv||!baseCv.width) return null;
+    var sc=Math.min(1,(maxW||1800)/baseCv.width);
+    var w=Math.round(baseCv.width*sc), h=Math.round(baseCv.height*sc);
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    c.getContext('2d').drawImage(baseCv,0,0,w,h);
+    try{ return c.toDataURL('image/jpeg',0.9); }catch(e){ return null; }
+  }
+  // ===== Prancha técnica (paisagem, com cotas e carimbo) =====
+  async function buildPrancha(){
+    await loadJsPDF();
+    var jsPDF=window.jspdf.jsPDF;
+    var doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape',compress:true});
+    var PW=297, PH=210, MG=8;
+    var $=function(id){return document.getElementById(id);};
+    var slices = $('pxSlices').style.display!=='none';
+    try{ drawTest(); }catch(e){}   // garante que baseCv seja a imagem do modo/config atuais
+
+    var cw,ch,canvases,mPerPx,modelName='';
+    if(slices){
+      var list=[].slice.call(document.querySelectorAll('#sliceList .slice')).map(sliceData).filter(function(s){return s.gab>0;});
+      cw=parseInt($('cvW').value)||0; ch=parseInt($('cvH').value)||0;
+      canvases=list.map(function(s){return {x:s.x,y:s.y,pxW:s.pxW,pxH:s.pxH,mW:s.mW,mH:s.mH,name:s.name};});
+      mPerPx=(canvases[0]&&canvases[0].pxW)? canvases[0].mW/canvases[0].pxW : 0;
+      modelName=(list[0]&&list[0].p&&list[0].p.n)||'';
+    }else{
+      cw=pmeta.totPxW; ch=pmeta.totPxH;
+      canvases=[{x:0,y:0,pxW:cw,pxH:ch,mW:lastWM,mH:lastHM,name:'Painel'}];
+      mPerPx=cw? lastWM/cw : 0;
+      var selP=$('preset'); modelName=(selP&&selP.options[selP.selectedIndex])?selP.options[selP.selectedIndex].text:'';
+    }
+    if(!(cw>0)||!(ch>0)||!canvases.length) throw new Error('Defina o painel/canvas antes de gerar a prancha.');
+    var totMx=cw*mPerPx, totMy=ch*mPerPx, pitchMM=mPerPx*1000;
+    var m=function(n){ return n.toFixed(2).replace('.',','); };
+    var mInt=function(n){ return m(n).replace(',00',''); };
+
+    doc.setDrawColor(30); doc.setLineWidth(0.4); doc.rect(MG,MG,PW-2*MG,PH-2*MG); doc.setLineWidth(0.2);
+
+    var mt=/P\d+(?:[.,]\d+)?/i.exec(modelName);
+    var tipo=mt? mt[0].toUpperCase().replace(',','.') : 'P'+(pitchMM?String(Math.round(pitchMM)):'');
+    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20);
+    doc.text('Painel de LED '+tipo+' de '+m(totMx)+' m x '+m(totMy)+' m', PW/2, 16, {align:'center'});
+    var amb=val('pdfEvento'); if(amb){ doc.setFontSize(12); doc.text('('+amb+')', PW/2, 22, {align:'center'}); }
+
+    var tbH=30, blockTop=PH-MG-tbH, drawTop=34, drawBottom=blockTop-26;
+    var areaL=MG+20, areaR=PW-MG-8, availW=areaR-areaL, availH=drawBottom-drawTop, aspect=cw/ch;
+    var dw=availW, dh=dw/aspect; if(dh>availH){ dh=availH; dw=dh*aspect; }
+    var dx=areaL+(availW-dw)/2, dy=drawTop+(availH-dh)/2, kx=dw/cw, ky=dh/ch;
+
+    var img=baseImgData(1800);
+    if(img) doc.addImage(img,'JPEG',dx,dy,dw,dh);
+    else { doc.setFillColor(5,16,28); doc.rect(dx,dy,dw,dh,'F'); }
+
+    doc.setDrawColor(220,30,30); doc.setLineWidth(0.5);
+    canvases.forEach(function(c){ doc.rect(dx+c.x*kx, dy+c.y*ky, c.pxW*kx, c.pxH*ky); });
+    doc.setLineWidth(0.2);
+
+    var dimY=dy-9; doc.setDrawColor(120); doc.line(dx,dimY,dx+dw,dimY);
+    doc.line(dx,dimY-1.5,dx,dimY+1.5); doc.line(dx+dw,dimY-1.5,dx+dw,dimY+1.5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(60);
+    doc.text(mInt(totMx)+' m — '+fmt(cw)+' px', dx+dw/2, dimY-1.3, {align:'center'});
+    var segY=dy-3.5;
+    canvases.forEach(function(c){ var sx=dx+c.x*kx, sw=c.pxW*kx;
+      doc.setDrawColor(150); doc.line(sx,segY,sx+sw,segY); doc.line(sx,segY-1,sx,segY+1); doc.line(sx+sw,segY-1,sx+sw,segY+1);
+      doc.setFontSize(7); doc.setTextColor(90); doc.text(m(c.mW)+' m — '+fmt(c.pxW)+' px', sx+sw/2, segY-1.2, {align:'center'});
+    });
+    var vx=dx-8; doc.setDrawColor(120); doc.line(vx,dy,vx,dy+dh); doc.line(vx-1.5,dy,vx+1.5,dy); doc.line(vx-1.5,dy+dh,vx+1.5,dy+dh);
+    doc.setFontSize(8); doc.setTextColor(60); doc.text(mInt(totMy)+' m — '+fmt(ch)+' px', vx-1.3, dy+dh/2, {align:'center', angle:90});
+
+    var notes=[['Software de Vídeo',val('pdfSoft','Resolume Arena')],['Codec',val('pdfCodec','DXV3')],['Formato',val('pdfFormato','.MOV')],['Imagem estática',val('pdfImg','PNG')]];
+    var nbX=MG+2, nbW=66, nbH=20, nbY=blockTop-nbH-3;
+    doc.setDrawColor(120); doc.rect(nbX,nbY,nbW,nbH);
+    notes.forEach(function(n,i){ var ly=nbY+5+i*4.3;
+      doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(30); doc.text(n[0]+': ', nbX+2, ly);
+      var lw=doc.getTextWidth(n[0]+': ');
+      doc.setFont('helvetica','normal'); doc.setTextColor(70); doc.text(String(n[1]), nbX+2+lw, ly);
+    });
+
+    var bY=blockTop; doc.setDrawColor(30); doc.setLineWidth(0.3); doc.rect(MG,bY,PW-2*MG,tbH);
+    var logoW=58; doc.line(MG+logoW,bY,MG+logoW,bY+tbH);
+    try{ var lg=await loadImg('logo.png'); var lh=13, lw2=lh*(lg.width/lg.height); doc.addImage(lg,'PNG',MG+(logoW-lw2)/2, bY+(tbH-lh)/2, lw2, lh); }catch(e){}
+    var snW=24, snX=PW-MG-snW; doc.line(snX,bY,snX,bY+tbH);
+    doc.setFont('helvetica','bold'); doc.setFontSize(24); doc.setTextColor(10); doc.text(val('pdfSheet','01'), snX+snW/2, bY+tbH/2+3, {align:'center'});
+    var fX=MG+logoW, colSplit=fX+(snX-fX)*0.62; doc.line(colSplit,bY,colSplit,bY+tbH);
+    var L=[['Nome do Projeto',val('pdfNome','Painel de LED '+tipo)],['Local',val('pdfLocal')],['Tipo de Projeto','Pixel Map'],['Engenheiro(a) Responsável',val('pdfResp')]];
+    var R=[['Data',new Date().toLocaleDateString('pt-BR')],['Escala','Sem escala'],['Ordem de Serviço',val('pdfOS')],['Cliente',val('pdfCliente')]];
+    var rh=tbH/4;
+    function cell(label,value,x0,y0,maxW){
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(90); doc.text(label+': ', x0+2, y0+rh/2+1);
+      var lw=doc.getTextWidth(label+': '); doc.setFont('helvetica','bold'); doc.setTextColor(20);
+      var full=String(value||'—'), v=full;
+      while(v && doc.getTextWidth(v) > (maxW-lw-4)){ v=v.slice(0,-1); }
+      if(v!==full && v.length>1) v=v.slice(0,-1)+'…';
+      doc.text(v, x0+2+lw, y0+rh/2+1);
+    }
+    for(var i=0;i<4;i++){ var ry=bY+i*rh; if(i>0){ doc.setDrawColor(30); doc.line(fX,ry,snX,ry); }
+      cell(L[i][0],L[i][1],fX,ry,colSplit-fX); cell(R[i][0],R[i][1],colSplit,ry,snX-colSplit);
+    }
+
+    doc.save((val('pdfCliente')||val('pdfEvento')||'Projetech')+' - Prancha Pixel Map.pdf');
+  }
+  var pb=document.getElementById('pdfPrancha');
+  if(pb) pb.onclick=async function(){
+    var o=pb.textContent; pb.disabled=true; pb.textContent='Gerando…';
+    try{ await buildPrancha(); }
+    catch(err){ alert('Não foi possível gerar a prancha: '+((err&&err.message)||err)); }
+    finally{ pb.disabled=false; pb.textContent=o; }
+  };
 
   btn.onclick=async function(){
     var original=btn.textContent; btn.disabled=true; btn.textContent='Gerando…';
