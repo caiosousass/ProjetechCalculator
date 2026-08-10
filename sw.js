@@ -1,5 +1,5 @@
 // Projetech Calc — service worker (offline cache)
-const CACHE = 'projetech-v99';
+const CACHE = 'projetech-v100';
 const ASSETS = [
   './',
   'index.html',

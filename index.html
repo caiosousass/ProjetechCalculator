@@ -2657,15 +2657,19 @@ if('serviceWorker' in navigator){
     canvases.forEach(function(c){ doc.rect(dx+c.x*kx, dy+c.y*ky, c.pxW*kx, c.pxH*ky); });
     doc.setLineWidth(0.2);
 
-    var dimY=dy-9; doc.setDrawColor(120); doc.line(dx,dimY,dx+dw,dimY);
+    var multi=canvases.length>1;
+    var dimY=multi?dy-9:dy-5; doc.setDrawColor(120); doc.line(dx,dimY,dx+dw,dimY);
     doc.line(dx,dimY-1.5,dx,dimY+1.5); doc.line(dx+dw,dimY-1.5,dx+dw,dimY+1.5);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(60);
     doc.text(mInt(totMx)+' m — '+fmt(cw)+' px', dx+dw/2, dimY-1.3, {align:'center'});
-    var segY=dy-3.5;
-    canvases.forEach(function(c){ var sx=dx+c.x*kx, sw=c.pxW*kx;
-      doc.setDrawColor(150); doc.line(sx,segY,sx+sw,segY); doc.line(sx,segY-1,sx,segY+1); doc.line(sx+sw,segY-1,sx+sw,segY+1);
-      doc.setFontSize(7); doc.setTextColor(90); doc.text(m(c.mW)+' m — '+fmt(c.pxW)+' px', sx+sw/2, segY-1.2, {align:'center'});
-    });
+    // cotas por canvas só fazem sentido com mais de um canvas (senão duplicam a total)
+    if(multi){
+      var segY=dy-3.5;
+      canvases.forEach(function(c){ var sx=dx+c.x*kx, sw=c.pxW*kx;
+        doc.setDrawColor(150); doc.line(sx,segY,sx+sw,segY); doc.line(sx,segY-1,sx,segY+1); doc.line(sx+sw,segY-1,sx+sw,segY+1);
+        doc.setFontSize(7); doc.setTextColor(90); doc.text(m(c.mW)+' m — '+fmt(c.pxW)+' px', sx+sw/2, segY-1.2, {align:'center'});
+      });
+    }
     var vx=dx-8; doc.setDrawColor(120); doc.line(vx,dy,vx,dy+dh); doc.line(vx-1.5,dy,vx+1.5,dy); doc.line(vx-1.5,dy+dh,vx+1.5,dy+dh);
     doc.setFontSize(8); doc.setTextColor(60); doc.text(mInt(totMy)+' m — '+fmt(ch)+' px', vx-1.3, dy+dh/2, {align:'center', angle:90});
 
