@@ -1306,6 +1306,8 @@ function drawTestSlices(){
     if(snapG.h!=null){ ctx.beginPath(); ctx.moveTo(0,snapG.h); ctx.lineTo(cw,snapG.h); ctx.stroke(); }
     ctx.restore();
   }
+  // composição acompanha cor/fundo/logo em tempo real (mesmo sem passar pelo calcSlices)
+  try{ drawSliceMap([...document.querySelectorAll('#sliceList .slice')].map(sliceData), cw, ch); }catch(e){}
   scheduleVideoHint();
 }
 /* aviso de formato do vídeo: MP4 tem limite de pixels — acima disso sai WebM */
@@ -1730,24 +1732,28 @@ function calcSlices(){
   if(tAvg) html+=S('Consumo médio', `${fmt(tAvg/1000,2)}<small> kW</small>`);
   if(tMax) html+=S('Consumo máximo', `${fmt(tMax/1000,2)}<small> kW</small>`);
   $('sliceTotal').innerHTML=html;
+  if(pixMode==='slices'){ stopAnim(); drawTest(); startAnim(); }   // atualiza baseCv (composição) antes do mapa
   drawSliceMap(list,cw,ch);
-  if(pixMode==='slices'){ stopAnim(); drawTest(); startAnim(); }   // atualiza a imagem de teste do conjunto
 }
 function drawSliceMap(list,cw,ch){
   const svg=$('sliceSvg'); if(!svg) return;
   if(!(cw>0)||!(ch>0)){ svg.innerHTML=''; $('sliceHint').textContent='Defina o canvas total.'; return; }
   const W=520, H=Math.max(90,Math.round(W*ch/cw));
   const k=W/cw, fx=n=>(+n).toFixed(1);
+  const thumb=panelThumb();   // imagem de teste composta (o pixel map de verdade)
   let body=`<rect x="0" y="0" width="${W}" height="${H}" rx="4" fill="#05101c" stroke="#26325a"/>`;
+  if(thumb) body+=`<image x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none" href="${thumb}"/>`;
   let fora=0;
+  const halo='stroke="#05101c" stroke-width="2.5" paint-order="stroke"';
   list.forEach((s,i)=>{
     if(!s.gab) return;
     const x=s.x*k, y=s.y*k, w=s.pxW*k, h=s.pxH*k;
     if(s.x<0||s.y<0||s.x+s.pxW>cw||s.y+s.pxH>ch) fora++;
     const c=['#3d7bff','#22d3ee','#22c55e','#f59e0b','#a855f7','#ef4444'][i%6];
-    body+=`<rect x="${fx(x)}" y="${fx(y)}" width="${fx(w)}" height="${fx(h)}" rx="2" fill="${c}" fill-opacity=".18" stroke="${c}" stroke-width="1.5"/>`;
-    if(w>52&&h>26) body+=`<text x="${fx(x+w/2)}" y="${fx(y+h/2-3)}" fill="#e6ecf5" font-size="10" font-weight="700" text-anchor="middle">${s.name}</text>`
-      +`<text x="${fx(x+w/2)}" y="${fx(y+h/2+9)}" fill="#93a0c7" font-size="8.5" text-anchor="middle">${fmt(s.pxW)}×${fmt(s.pxH)} · X${fmt(s.x)} Y${fmt(s.y)}</text>`;
+    // com o conteúdo de fundo, o retângulo vira só contorno; sem imagem, mantém o preenchimento
+    body+=`<rect x="${fx(x)}" y="${fx(y)}" width="${fx(w)}" height="${fx(h)}" rx="2" fill="${c}" fill-opacity="${thumb?0:.18}" stroke="${c}" stroke-width="1.5"/>`;
+    if(w>52&&h>26) body+=`<text x="${fx(x+w/2)}" y="${fx(y+13)}" fill="#fff" font-size="10" font-weight="700" text-anchor="middle" ${halo}>${s.name}</text>`
+      +`<text x="${fx(x+w/2)}" y="${fx(y+23)}" fill="#cdd6ef" font-size="8.5" text-anchor="middle" ${halo}>${fmt(s.pxW)}×${fmt(s.pxH)} · X${fmt(s.x)} Y${fmt(s.y)}</text>`;
   });
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W); svg.setAttribute('height',H);
   svg.style.maxWidth='100%'; svg.style.height='auto';
