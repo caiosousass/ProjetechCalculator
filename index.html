@@ -2648,11 +2648,8 @@ if('serviceWorker' in navigator){
 
     var mt=/P\d+(?:[.,]\d+)?/i.exec(modelName);
     var tipo=mt? mt[0].toUpperCase().replace(',','.') : 'P'+(pitchMM?String(Math.round(pitchMM)):'');
-    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20);
-    doc.text('Painel de LED '+tipo+' de '+m(totMx)+' m x '+m(totMy)+' m', PW/2, 16, {align:'center'});
-    var amb=val('pdfEvento'); if(amb){ doc.setFontSize(12); doc.text('('+amb+')', PW/2, 22, {align:'center'}); }
 
-    var tbH=30, blockTop=PH-MG-tbH, drawTop=34, drawBottom=blockTop-26;
+    var tbH=30, blockTop=PH-MG-tbH, drawTop=18, drawBottom=blockTop-26;
     var areaL=MG+20, areaR=PW-MG-8, availW=areaR-areaL, availH=drawBottom-drawTop, aspect=cw/ch;
     var dw=availW, dh=dw/aspect; if(dh>availH){ dh=availH; dw=dh*aspect; }
     var dx=areaL+(availW-dw)/2, dy=drawTop+(availH-dh)/2, kx=dw/cw, ky=dh/ch;
