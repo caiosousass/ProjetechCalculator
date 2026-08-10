@@ -1569,6 +1569,10 @@ $('logoPos').addEventListener('change',()=>{
     dragEl=null; snapG={v:null,h:null};
     drawTest();                                            // limpa as linhas-guia do canvas
   }));
+  // iOS: reforça o bloqueio da rolagem enquanto arrasta (touch-action sozinho às vezes não basta)
+  cv.addEventListener('touchmove',e=>{ if(dragEl) e.preventDefault(); },{passive:false});
+  // estado inicial: como o Logo já vem ligado, o canvas não pode rolar a página ao arrastar
+  cv.style.touchAction=(tiOpts.logo||tiOpts.info)?'none':'';
 })();
 $('infoPos').addEventListener('change',()=>{ $('infoXYWrap').style.display = $('infoPos').value==='custom'?'flex':'none'; drawTest(); });
 ['infoX','infoY'].forEach(id=>$(id).addEventListener('input',requestDraw));
