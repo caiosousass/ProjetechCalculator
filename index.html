@@ -284,8 +284,10 @@ details.sector-vd[open] summary::before{transform:rotate(90deg)}
 .chip:active{transform:scale(.96)}
 input[type=color]{width:52px;height:46px;padding:4px;border-radius:12px;background:var(--bg2);border:1px solid var(--line);cursor:pointer}
 input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
-.ti-preview{margin:12px 0;padding:8px;background:#0a0a0a;border:1px solid var(--line);border-radius:12px;overflow:auto;display:grid;place-items:center;min-height:80px}
-.ti-preview canvas{max-width:100%;max-height:320px;width:auto;height:auto;display:block;image-rendering:auto}
+.ti-preview{margin:12px 0;padding:8px;background:#0a0a0a;border:1px solid var(--line);border-radius:12px;overflow:auto;display:grid;place-items:center;min-height:80px;touch-action:none}
+/* touch-action:none direto no CSS — impede a página de rolar ao arrastar logo/info (iOS) */
+.ti-preview canvas{max-width:100%;max-height:320px;width:auto;height:auto;display:block;image-rendering:auto;touch-action:none}
+#tiCanvas{touch-action:none!important}
 
 /* ===== Bottom nav ===== */
 /* ===== Mobile: sidebar vira gaveta (drawer) ===== */
@@ -1569,10 +1571,8 @@ $('logoPos').addEventListener('change',()=>{
     dragEl=null; snapG={v:null,h:null};
     drawTest();                                            // limpa as linhas-guia do canvas
   }));
-  // iOS: reforça o bloqueio da rolagem enquanto arrasta (touch-action sozinho às vezes não basta)
-  cv.addEventListener('touchmove',e=>{ if(dragEl) e.preventDefault(); },{passive:false});
-  // estado inicial: como o Logo já vem ligado, o canvas não pode rolar a página ao arrastar
-  cv.style.touchAction=(tiOpts.logo||tiOpts.info)?'none':'';
+  // iOS: reforça o bloqueio da rolagem enquanto arrasta (no documento, p/ pegar qualquer caso)
+  document.addEventListener('touchmove',e=>{ if(dragEl && e.cancelable) e.preventDefault(); },{passive:false});
 })();
 $('infoPos').addEventListener('change',()=>{ $('infoXYWrap').style.display = $('infoPos').value==='custom'?'flex':'none'; drawTest(); });
 ['infoX','infoY'].forEach(id=>$(id).addEventListener('input',requestDraw));
