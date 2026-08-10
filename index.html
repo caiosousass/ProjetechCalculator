@@ -1507,8 +1507,20 @@ $('segLogoSrc').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('f-logo-upload').style.display = logoSource==='custom' ? 'block':'none';
   drawTest();
 });
+// mantém o CENTRO do elemento fixo ao mudar a escala (só no modo Personalizado):
+// assim, o que está centralizado continua centralizado; o resto escala pelo próprio centro.
+function anchorScaleCustom(rect, xf, yf, oldFrac, newFrac){
+  if(!rect || !(oldFrac>0) || !(newFrac>0)) return;
+  const off=(pixMode==='slices'&&sliceRef)?sliceRef:{x:0,y:0};
+  const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2, ratio=newFrac/oldFrac;
+  const nw=rect.w*ratio, nh=rect.h*ratio;
+  $(xf).value=Math.round(cx-nw/2-off.x);
+  $(yf).value=Math.round(cy-nh/2-off.y);
+}
 $('logoScale').addEventListener('input',()=>{
-  logoSizeFrac=(+$('logoScale').value)/100;
+  const nf=(+$('logoScale').value)/100;
+  if(logoPos==='custom') anchorScaleCustom(logoRect,'logoX','logoY',logoSizeFrac,nf);
+  logoSizeFrac=nf;
   $('logoScaleVal').textContent=$('logoScale').value+'%';
   requestDraw();
 });
@@ -1593,7 +1605,9 @@ $('logoFile').addEventListener('change',e=>{
   rd.readAsDataURL(f);
 });
 $('infoScale').addEventListener('input',()=>{
-  infoSize=(+$('infoScale').value)/100;
+  const nf=(+$('infoScale').value)/100;
+  if($('infoPos').value==='custom') anchorScaleCustom(infoRect,'infoX','infoY',infoSize,nf);
+  infoSize=nf;
   $('infoScaleVal').textContent=$('infoScale').value+'%';
   requestDraw();
 });
