@@ -532,10 +532,6 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           <input type="color" id="tiInfoColor" value="#ffffff">
         </div>
         <div class="field">
-          <label>Escala da info <span id="infoScaleVal" style="color:var(--mut2)">3%</span></label>
-          <input type="range" id="infoScale" min="0.3" max="20" step="0.1" value="3" style="width:100%">
-        </div>
-        <div class="field">
           <label>Fonte da info</label>
           <select id="tiInfoFont">
             <option value="'Montserrat', sans-serif">Montserrat</option>
@@ -590,6 +586,10 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <div class="row" id="infoXYWrap" style="display:none;margin-top:12px">
           <div class="field"><label>X</label><div class="suffix"><input type="text" id="infoX" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
           <div class="field"><label>Y</label><div class="suffix"><input type="text" id="infoY" value="0" step="1" inputmode="numeric"><span>px</span></div></div>
+        </div>
+        <div class="field">
+          <label>Escala da info <span id="infoScaleVal" style="color:var(--mut2)">3%</span></label>
+          <input type="range" id="infoScale" min="0.3" max="20" step="0.1" value="3" style="width:100%">
         </div>
       </details>
       <details id="tiLogoOpts" class="sector-res" open style="margin-top:12px"><summary>Configurar logo</summary>
