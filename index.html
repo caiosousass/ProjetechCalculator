@@ -533,7 +533,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         </div>
         <div class="field">
           <label>Escala da info <span id="infoScaleVal" style="color:var(--mut2)">3%</span></label>
-          <input type="range" id="infoScale" min="1" max="20" value="3" style="width:100%">
+          <input type="range" id="infoScale" min="0.3" max="20" step="0.1" value="3" style="width:100%">
         </div>
         <div class="field">
           <label>Fonte da info</label>
@@ -1234,7 +1234,7 @@ function drawTest(target, meta){
   // info: bloco centralizado multilinha (título maior · resolução · medida em m)
   if(isMain) infoRect=null;
   if(tiOpts.info){
-    const fs=Math.max(12,Math.min(W,H)*infoSize);
+    const fs=Math.max(6,Math.min(W,H)*infoSize);
     const font=$('tiInfoFont').value;
     const tit=(M.title!=null) ? M.title : $('tiTitle').value.trim();     // no slice, o nome do slice
     const wM=(M.mW!=null)?M.mW:cols*(+$('mw').value||0), hM=(M.mH!=null)?M.mH:rows*(+$('mh').value||0);
