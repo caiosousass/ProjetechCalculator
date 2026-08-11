@@ -1389,15 +1389,34 @@ function drawTestProj(){
   sliceGeom=rects.map(r=>({x:r.x,y:r.y,w:r.w,h:r.h}));            // glow "por projetor" de graça
   // grade do padrão: 12 colunas por projetor, células ~quadradas (o drawTest exige cols/rows>0)
   const gc=12, cell=g.pxW/gc, rows=Math.max(1,Math.round(g.pxH/cell));
-  rects.forEach((r,i)=>{
-    const o={};
-    drawTest(off,{totPxW:g.pxW,totPxH:g.pxH,cols:gc,rows,pxw:g.pxW/gc,pxh:g.pxH/rows,mW:g.Wp,mH:g.Hp,__out:o});
-    ctx.drawImage(off,r.x,r.y);
-    if(i===0){                                                     // projetor 1 = referência do arrasto
-      sliceRef={x:r.x,y:r.y,w:r.w,h:r.h};
-      if(o.logo) logoRect={x:o.logo.x+r.x,y:o.logo.y+r.y,w:o.logo.w,h:o.logo.h};
-      if(o.info) infoRect={x:o.info.x+r.x,y:o.info.y+r.y,w:o.info.w,h:o.info.h};
+  // o padrão é IGUAL p/ todos os projetores — desenha 1 vez e recompõe
+  const o={};
+  drawTest(off,{totPxW:g.pxW,totPxH:g.pxH,cols:gc,rows,pxw:g.pxW/gc,pxh:g.pxH/rows,mW:g.Wp,mH:g.Hp,__out:o});
+  sliceRef={x:rects[0].x,y:rects[0].y,w:rects[0].w,h:rects[0].h};  // projetor 1 = referência do arrasto
+  if(o.logo) logoRect={x:o.logo.x,y:o.logo.y,w:o.logo.w,h:o.logo.h};
+  if(o.info) infoRect={x:o.info.x,y:o.info.y,w:o.info.w,h:o.info.h};
+  // MERGE real na sobreposição: quem invade o vizinho já desenhado entra com rampa de alpha
+  // (esquerda/topo esvanecem de 0→100% ao longo do blend) → crossfade, como no blending de verdade
+  const fe=document.createElement('canvas'), fx=fe.getContext('2d');
+  rects.forEach(r=>{
+    const colIdx=(r.n-1)%g.N, rowIdx=Math.floor((r.n-1)/g.N);
+    const featherL=(colIdx>0&&g.bW>0), featherT=(rowIdx>0&&g.bH>0);
+    if(!featherL&&!featherT){ ctx.drawImage(off,r.x,r.y); return; }
+    fe.width=r.w; fe.height=r.h;
+    fx.clearRect(0,0,r.w,r.h); fx.drawImage(off,0,0);
+    fx.globalCompositeOperation='destination-out';
+    if(featherL){
+      const gr=fx.createLinearGradient(0,0,g.bW,0);
+      gr.addColorStop(0,'rgba(0,0,0,1)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+      fx.fillStyle=gr; fx.fillRect(0,0,g.bW,r.h);
     }
+    if(featherT){
+      const gr=fx.createLinearGradient(0,0,0,g.bH);
+      gr.addColorStop(0,'rgba(0,0,0,1)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+      fx.fillStyle=gr; fx.fillRect(0,0,r.w,g.bH);
+    }
+    fx.globalCompositeOperation='source-over';
+    ctx.drawImage(fe,r.x,r.y);
   });
   drawProjOverlay(ctx,g,rects);
   outMeta={w:g.effW,h:g.effH,tag:`Multiprojecao ${g.N}x${g.M}`};
@@ -1422,12 +1441,12 @@ function drawProjOverlay(ctx,g,rects){
   if(projOpts.blend){
     ctx.save();
     for(let i=0;i<g.N-1;i++){ const bx=(i+1)*g.stepX, bw=g.bW;
-      ctx.fillStyle='rgba(245,158,11,.20)'; ctx.fillRect(bx,0,bw,H);
+      ctx.fillStyle='rgba(245,158,11,.10)'; ctx.fillRect(bx,0,bw,H);   // tinta leve: deixa o merge visível
       ctx.strokeStyle='rgba(245,158,11,.9)'; ctx.setLineDash([12*S,8*S]); ctx.lineWidth=S;
       ctx.beginPath(); ctx.moveTo(bx,0); ctx.lineTo(bx,H); ctx.moveTo(bx+bw,0); ctx.lineTo(bx+bw,H); ctx.stroke(); ctx.setLineDash([]);
     }
     for(let j=0;j<g.M-1;j++){ const by=(j+1)*g.stepY, bh=g.bH;
-      ctx.fillStyle='rgba(245,158,11,.20)'; ctx.fillRect(0,by,W,bh);
+      ctx.fillStyle='rgba(245,158,11,.10)'; ctx.fillRect(0,by,W,bh);
       ctx.strokeStyle='rgba(245,158,11,.9)'; ctx.setLineDash([12*S,8*S]); ctx.lineWidth=S;
       ctx.beginPath(); ctx.moveTo(0,by); ctx.lineTo(W,by); ctx.moveTo(0,by+bh); ctx.lineTo(W,by+bh); ctx.stroke(); ctx.setLineDash([]);
     }
@@ -1440,15 +1459,18 @@ function drawProjOverlay(ctx,g,rects){
     }
     if(projOpts.pnum){
       const fs=Math.max(18,Math.min(r.w,r.h)*0.09), m=Math.max(10,r.w*0.03);
+      // desloca o rótulo p/ fora das zonas de blend (área exclusiva do projetor)
+      const colIdx=(r.n-1)%g.N, rowIdx=Math.floor((r.n-1)/g.N);
+      const lx=r.x+(colIdx>0?g.bW:0)+m, ly=r.y+(rowIdx>0?g.bH:0)+m;
       ctx.save();
       ctx.textAlign='left'; ctx.textBaseline='top';
       ctx.shadowColor='rgba(0,0,0,.7)'; ctx.shadowBlur=fs*0.3; ctx.shadowOffsetY=Math.max(1,fs*0.05);
       ctx.fillStyle=cols[(r.n-1)%cols.length];
       ctx.font=`700 ${fs.toFixed(0)}px Montserrat,Arial`;
-      ctx.fillText('P'+r.n, r.x+m, r.y+m);
+      ctx.fillText('P'+r.n, lx, ly);
       ctx.fillStyle='#fff';
       ctx.font=`400 ${(fs*0.45).toFixed(0)}px Montserrat,Arial`;
-      ctx.fillText(`${fmt(r.w)} × ${fmt(r.h)} px`, r.x+m, r.y+m+fs*1.1);
+      ctx.fillText(`${fmt(r.w)} × ${fmt(r.h)} px`, lx, ly+fs*1.1);
       ctx.restore();
     }
   });
