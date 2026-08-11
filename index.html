@@ -787,14 +787,15 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
 
     <div class="card">
       <h3>O que você quer calcular?</h3>
-      <div class="seg" id="segProj">
+      <div class="seg" id="segProj" style="flex-wrap:wrap">
         <button data-m="dist" class="on">Distância</button>
         <button data-m="throw">Throw ratio</button>
         <button data-m="width">Tamanho</button>
+        <button data-m="multi" style="flex-basis:100%">Multiprojeção</button>
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="projDados">
       <h3>Dados</h3>
       <div class="field" id="f-throw">
         <label>Throw ratio da lente (D/L)</label>
@@ -839,13 +840,13 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="projResultado">
       <h3>Resultado</h3>
       <div class="results" id="projResults"></div>
       <div class="hint">Fórmula: <b>Distância = Throw ratio × Largura</b>. O throw ratio vem na ficha da lente (ex.: 1.2–1.8:1). Quanto maior, mais longe o projetor fica.</div>
     </div>
 
-    <div class="card">
+    <div class="card" id="projBlend">
       <h3>Blending (multi-projetor)</h3>
       <div class="row">
         <div class="field"><label>Projetores (horizontal)</label><input type="text" id="bpH" value="2" min="1" inputmode="numeric"></div>
@@ -878,7 +879,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="hint">A largura total da tela é dividida entre os projetores considerando as zonas de sobreposição. A imagem de cada projetor segue a proporção da resolução nativa.</div>
     </div>
 
-    <div class="card">
+    <div class="card" id="projPixelmap">
       <h3>Pixel map (multiprojeção)</h3>
       <div class="ti-preview"><canvas id="projMapCv"></canvas></div>
       <button class="btn btn-primary" id="projMapDl" style="margin-top:12px">Baixar pixel map (PNG)</button>
@@ -2182,6 +2183,16 @@ $('segSizeUnit').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   b.classList.add('on'); sizeUnit=b.dataset.u; updateProjFields(); calcProj();
 });
 function updateProjFields(){
+  const multi = projMode==='multi';
+  // multiprojeção: mostra Blending + pixel map; esconde o cálculo de projetor único
+  $('projDados').style.display     = multi?'none':'';
+  $('projResultado').style.display = multi?'none':'';
+  $('projBlend').style.display     = multi?'':'none';
+  $('projPixelmap').style.display  = multi?'':'none';
+  document.querySelector('#scr-proj .screen-sub').textContent = multi
+    ? 'Blending e pixel map para vários projetores em fileira'
+    : 'Distância de projeção pelo throw ratio';
+  if(multi){ calcBlend(); drawProjMap(); return; }
   const sizeIsInput = projMode!=='width';
   $('f-throw').style.display = projMode==='throw' ? 'none':'block';
   $('f-dist').style.display  = projMode==='dist'  ? 'none':'block';
