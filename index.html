@@ -75,6 +75,9 @@ body.collapsed .side-nav button span{display:none}
 /* rodapé da sidebar: usuário logado (só aparece com o login ligado) */
 .side-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--line);display:none}
 .side-foot.on{display:block}
+/* com o rodapé visível, só ele empurra p/ baixo (senão os dois 'margin-top:auto' dividem o espaço
+   e o bloco do usuário fica boiando no meio da barra) */
+.side-foot.on ~ .collapse-btn{margin-top:8px}
 .side-foot .who{font-size:11px;color:var(--mut2);padding:0 12px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .side-foot button{
   display:flex;align-items:center;gap:12px;border:0;background:transparent;color:var(--mut);
