@@ -529,6 +529,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="field" id="projChipsWrap" style="display:none;margin-top:12px">
         <label>Multiprojeção</label>
         <div class="chips" id="projChips">
+          <button class="chip on" data-p="grid">Grade</button>
+          <button class="chip on" data-p="cnum">Colunas</button>
           <button class="chip on" data-p="blend">Zonas de blend</button>
           <button class="chip on" data-p="outline">Contorno</button>
           <button class="chip on" data-p="pnum">Número</button>
@@ -1195,7 +1197,7 @@ let logoRect=null, infoRect=null, dragEl=null;   // retângulos desenhados (px d
 let sliceRef=null;                                // no modo slices/multiproj: 1ª região (offset+tamanho) p/ arrastar
 let snapG={v:null,h:null};          // linhas-guia do snap magnético (x/y em px da imagem, null = sem snap)
 let genTarget='led';                              // quem está usando o gerador: 'led' | 'proj' (multiprojeção)
-const projOpts={blend:true,outline:true,pnum:true,footer:true};   // marcações específicas da multiprojeção
+const projOpts={grid:true,cnum:true,blend:true,outline:true,pnum:true,footer:true};   // marcações específicas da multiprojeção
 let outMeta={w:0,h:0,tag:''};                     // tamanho/rótulo da última imagem gerada (nome de arquivo)
 function drawTest(target, meta){
   if(!target && genTarget==='proj') return drawTestProj();        // gerador emprestado à Projeção
@@ -1391,7 +1393,12 @@ function drawTestProj(){
   const gc=12, cell=g.pxW/gc, rows=Math.max(1,Math.round(g.pxH/cell));
   // o padrão é IGUAL p/ todos os projetores — desenha 1 vez e recompõe
   const o={};
+  // grade e números do padrão saem daqui (viram overlay CONTÍNUO no canvas todo,
+  // pra as linhas se encontrarem e a numeração ser 1..N sem reiniciar por projetor)
+  const _grid=tiOpts.grid, _numbers=tiOpts.numbers;
+  tiOpts.grid=false; tiOpts.numbers=false;
   drawTest(off,{totPxW:g.pxW,totPxH:g.pxH,cols:gc,rows,pxw:g.pxW/gc,pxh:g.pxH/rows,mW:g.Wp,mH:g.Hp,__out:o});
+  tiOpts.grid=_grid; tiOpts.numbers=_numbers;
   sliceRef={x:rects[0].x,y:rects[0].y,w:rects[0].w,h:rects[0].h};  // projetor 1 = referência do arrasto
   if(o.logo) logoRect={x:o.logo.x,y:o.logo.y,w:o.logo.w,h:o.logo.h};
   if(o.info) infoRect={x:o.info.x,y:o.info.y,w:o.info.w,h:o.info.h};
@@ -1438,6 +1445,15 @@ function drawTestProj(){
 function drawProjOverlay(ctx,g,rects){
   const W=g.effW, H=g.effH, S=Math.max(1,Math.round(Math.min(g.pxW,g.pxH)/900));
   const cols=['#3d7bff','#22d3ee','#22c55e','#f59e0b','#a855f7','#ef4444'];
+  const cell=g.pxW/12;                    // mesma célula do padrão, agora CONTÍNUA no canvas todo
+  const footH=projOpts.footer?Math.max(30,g.pxH*0.06):0;
+  // grade quadrada contínua — verticais e horizontais se encontram em todo o canvas
+  if(projOpts.grid){
+    ctx.save(); ctx.strokeStyle='rgba(255,255,255,.16)'; ctx.lineWidth=S; ctx.beginPath();
+    for(let x=0;x<=W+0.5;x+=cell){ const xr=Math.min(W,Math.round(x)); ctx.moveTo(xr,0); ctx.lineTo(xr,H); }
+    for(let y=0;y<=H+0.5;y+=cell){ const yr=Math.min(H,Math.round(y)); ctx.moveTo(0,yr); ctx.lineTo(W,yr); }
+    ctx.stroke(); ctx.restore();
+  }
   if(projOpts.blend){
     ctx.save();
     for(let i=0;i<g.N-1;i++){ const bx=(i+1)*g.stepX, bw=g.bW;
@@ -1487,6 +1503,21 @@ function drawProjOverlay(ctx,g,rects){
     for(let j=0;j<g.M-1;j++){ const by=(j+1)*g.stepY+g.bH/2;
       ctx.textBaseline='middle';
       ctx.fillText('BLEND '+fmt(g.bH)+' px', W*0.015, by);
+    }
+    ctx.restore();
+  }
+  // numeração CONTÍNUA das colunas (1..N) em cima e embaixo — círculos brancos
+  if(projOpts.cnum){
+    const nCols=Math.max(1,Math.round(W/cell));
+    const rad=Math.max(11,cell*0.20), fs=rad*1.05, yTop=rad+S*3, yBot=H-footH-rad-S*3;
+    ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`700 ${fs.toFixed(0)}px Montserrat,Arial`;
+    for(let c=1;c<=nCols;c++){ const cx=(c-0.5)*cell; if(cx>W-1) break;
+      [yTop,yBot].forEach(cy=>{
+        ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2);
+        ctx.fillStyle='rgba(255,255,255,.92)'; ctx.fill();
+        ctx.lineWidth=S; ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.stroke();
+        ctx.fillStyle='#0b1020'; ctx.fillText(String(c),cx,cy);
+      });
     }
     ctx.restore();
   }
