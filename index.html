@@ -1216,9 +1216,8 @@ function paintInfo(ctx,W,H,o){
   const lines=[];
   if(tit) lines.push({t:tit, s:fs*1.8});                          // título maior
   lines.push({t:`${W} × ${H} px`, s:fs*0.8});                     // resolução menor
-  lines.push({t:`${fmt(o.mW||0,2)} × ${fmt(o.mH||0,2)} m`, s:fs*0.8});
-  if(o.cols>0 && o.rows>0) lines.push({t:`${o.cols} × ${o.rows} = ${fmt(o.cols*o.rows)} quadrados`, s:fs*0.8});
-  if(H>0) lines.push({t:`Proporção ${fmt(W/H,2)} : 1`, s:fs*0.8});
+  if(o.meters!==false) lines.push({t:`${fmt(o.mW||0,2)} × ${fmt(o.mH||0,2)} m`, s:fs*0.8});
+  if(o.ratio && H>0) lines.push({t:`Proporção ${fmt(W/H,2)} : 1`, s:fs*0.8});
   const gap=fs*0.3;
   let bw=0, bh=0;
   lines.forEach((ln,i)=>{ ctx.font=`${infoWeight} ${ln.s.toFixed(0)}px ${font}`; bw=Math.max(bw,ctx.measureText(ln.t).width); bh+=ln.s*1.02+(i?gap:0); });
@@ -1304,7 +1303,7 @@ function drawTest(target, meta){
   if(isMain) infoRect=null;
   if(tiOpts.info && !M.noInfo){
     const wM=(M.mW!=null)?M.mW:cols*(+$('mw').value||0), hM=(M.mH!=null)?M.mH:rows*(+$('mh').value||0);
-    const r=paintInfo(ctx,W,H,{title:M.title,mW:wM,mH:hM,forceCenter:M.forceCenter,cols,rows});
+    const r=paintInfo(ctx,W,H,{title:M.title,mW:wM,mH:hM,forceCenter:M.forceCenter});
     if(isMain) infoRect=r; else if(M.__out) M.__out.info=r;
   }
   // logo
@@ -1456,12 +1455,8 @@ function drawTestProj(){
     }
   }
   drawProjOverlay(ctx,g,rects);
-  // info ÚNICA da tela toda (resolução, medida, nº de quadrados e proporção), por cima de tudo
-  if(tiOpts.info){
-    const base=g.pxW/12;
-    infoRect=paintInfo(ctx,g.effW,g.effH,{mW:g.T,mH:g.Htot,
-      cols:Math.max(1,Math.round(g.effW/base)), rows:Math.max(1,Math.round(g.effH/base))});
-  }
+  // info ÚNICA da tela toda: título (opcional) · resolução · proporção
+  if(tiOpts.info) infoRect=paintInfo(ctx,g.effW,g.effH,{meters:false,ratio:true});
   outMeta={w:g.effW,h:g.effH,tag:`Multiprojecao ${g.N}x${g.M}`};
   $('tiInfo').textContent=`Multiprojeção ${g.N}×${g.M} · ${fmt(g.effW)} × ${fmt(g.effH)} px · blend ${fmt(g.bW)} px`;
   baseCv.width=g.effW; baseCv.height=g.effH; baseCtx.clearRect(0,0,g.effW,g.effH); baseCtx.drawImage(cv,0,0);
@@ -1487,6 +1482,11 @@ function drawProjOverlay(ctx,g,rects){
   const nCols=Math.max(1,Math.round(W/base)), cellW=W/nCols;
   const nRows=Math.max(1,Math.round(H/base)), cellH=H/nRows;
   const footH=projOpts.footer?Math.max(30,g.pxH*0.06):0;
+  // faixa dos números: desce se a borda estiver ligada (senão a borda cobre os círculos)
+  const bwEdge=tiOpts.border?Math.max(1,borderPx):0;
+  const numRad=Math.max(11,cellW*0.20);
+  const yNumTop=bwEdge+numRad+S*3, yNumBot=H-footH-bwEdge-numRad-S*3;
+  const topFree=projOpts.cnum ? yNumTop+numRad+S*4 : bwEdge+S*2;   // 1ª altura livre abaixo dos números
   // grade contínua — verticais e horizontais se encontram em todo o canvas
   if(projOpts.grid){
     ctx.save(); ctx.strokeStyle='rgba(255,255,255,.16)'; ctx.lineWidth=S; ctx.beginPath();
@@ -1517,7 +1517,8 @@ function drawProjOverlay(ctx,g,rects){
       const fs=Math.max(18,Math.min(r.w,r.h)*0.09), m=Math.max(10,r.w*0.03);
       // desloca o rótulo p/ fora das zonas de blend (área exclusiva do projetor)
       const colIdx=(r.n-1)%g.N, rowIdx=Math.floor((r.n-1)/g.N);
-      const lx=r.x+(colIdx>0?g.bW:0)+m, ly=r.y+(rowIdx>0?g.bH:0)+m;
+      const lx=r.x+(colIdx>0?g.bW:0)+m;
+      const ly=(rowIdx===0) ? Math.max(r.y+m, topFree) : r.y+g.bH+m;   // 1ª fileira: abaixo dos números
       ctx.save();
       ctx.textAlign='left'; ctx.textBaseline='top';
       ctx.shadowColor='rgba(0,0,0,.7)'; ctx.shadowBlur=fs*0.3; ctx.shadowOffsetY=Math.max(1,fs*0.05);
@@ -1536,19 +1537,20 @@ function drawProjOverlay(ctx,g,rects){
     const bfs=Math.max(14,g.pxH*0.03);
     ctx.font=`700 ${bfs}px Montserrat,Arial`;
     ctx.shadowColor='rgba(0,0,0,.6)'; ctx.shadowBlur=bfs*0.25;
+    const byLbl=Math.max(topFree, H*0.02);          // sempre abaixo da faixa de números (sem sobrepor)
     for(let i=0;i<g.N-1;i++){ const bx=(i+1)*g.stepX+g.bW/2;
-      ctx.fillText('BLEND', bx, H*0.055); ctx.fillText(fmt(g.bW)+' px', bx, H*0.055+bfs*1.1);
+      ctx.fillText('BLEND', bx, byLbl); ctx.fillText(fmt(g.bW)+' px', bx, byLbl+bfs*1.1);
     }
     ctx.textAlign='left';
     for(let j=0;j<g.M-1;j++){ const by=(j+1)*g.stepY+g.bH/2;
       ctx.textBaseline='middle';
-      ctx.fillText('BLEND '+fmt(g.bH)+' px', W*0.015, by);
+      ctx.fillText('BLEND '+fmt(g.bH)+' px', bwEdge+Math.max(10,W*0.012), by);
     }
     ctx.restore();
   }
   // numeração CONTÍNUA das colunas (1..N) em cima e embaixo — círculos brancos
   if(projOpts.cnum){
-    const rad=Math.max(11,cellW*0.20), fs=rad*1.05, yTop=rad+S*3, yBot=H-footH-rad-S*3;
+    const rad=numRad, fs=rad*1.05, yTop=yNumTop, yBot=yNumBot;
     ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`700 ${fs.toFixed(0)}px Montserrat,Arial`;
     for(let c=1;c<=nCols;c++){ const cx=(c-0.5)*cellW;      // sempre no meio da coluna (nenhuma fica cortada)
       [yTop,yBot].forEach(cy=>{
