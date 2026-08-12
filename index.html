@@ -3384,26 +3384,40 @@ if('serviceWorker' in navigator){
     }
     this.y+=2;
   };
-  // tabela simples: cols = [{t:'Título', w:mm, a:'right'?}]
+  // tabela: cols = [{t:'Título', w:mm, a:'right'?}] — células quebram em várias linhas
+  // (a lista de endereços do DMX é longa e precisa aparecer inteira)
   Doc.prototype.table=function(cols,rows){
-    var d=this.d, M=this.M, self=this;
+    var d=this.d, M=this.M, self=this, LH=4;
     var total=cols.reduce(function(s,c){return s+c.w;},0), esc=(this.PW-2*M)/total;
     function line(vals,bold,color){
-      self.room(6.5);
-      var x=M;
-      d.setFont('helvetica',bold?'bold':'normal'); d.setFontSize(8.5); d.setTextColor(color==null?60:color);
-      for(var i=0;i<cols.length;i++){
-        var w=cols[i].w*esc, s=String(vals[i]==null?'':vals[i]);
-        s=d.splitTextToSize(s, w-2)[0]||'';
-        if(cols[i].a==='right') d.text(s, x+w-2, self.y, {align:'right'});
-        else d.text(s, x, self.y);
-        x+=w;
+      d.setFont('helvetica',bold?'bold':'normal'); d.setFontSize(8.5);
+      var parts=cols.map(function(c,i){ return d.splitTextToSize(clean(vals[i]), c.w*esc-2); });
+      var maxL=Math.max.apply(null,parts.map(function(p){return p.length||1;}));
+      var i=0;
+      while(i<maxL){                                   // fatia entre páginas se a célula for muito alta
+        var cabe=Math.floor((281-self.y)/LH);
+        if(cabe<1){ d.addPage(); self.y=16; self.foot(); cabe=Math.floor((281-self.y)/LH); }
+        var n=Math.min(cabe, maxL-i), x=M;
+        d.setFont('helvetica',bold?'bold':'normal'); d.setFontSize(8.5); d.setTextColor(color==null?60:color);
+        parts.forEach(function(p,ci){
+          var w=cols[ci].w*esc;
+          for(var k=0;k<n;k++){
+            var s=p[i+k]; if(s==null) continue;
+            if(cols[ci].a==='right') d.text(s, x+w-2, self.y+k*LH, {align:'right'});
+            else d.text(s, x, self.y+k*LH);
+          }
+          x+=w;
+        });
+        self.y+=n*LH; i+=n;
       }
-      self.y+=5;
+      self.y+=1.5;
     }
     line(cols.map(function(c){return c.t;}), true, 110);
-    d.setDrawColor(220); d.line(M, this.y-3.4, this.PW-M, this.y-3.4);
-    for(var i=0;i<rows.length;i++) line(rows[i], false, 40);
+    d.setDrawColor(220); d.line(M, this.y-3.2, this.PW-M, this.y-3.2);
+    for(var i=0;i<rows.length;i++){
+      line(rows[i], false, 40);
+      if(i<rows.length-1){ d.setDrawColor(238); d.line(M, this.y-2.6, this.PW-M, this.y-2.6); }
+    }
     this.y+=3;
   };
 
