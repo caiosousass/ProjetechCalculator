@@ -337,6 +337,13 @@ details.sector-vd[open] summary::before{transform:rotate(90deg)}
 .hint b{color:var(--mut)}
 .divider{height:1px;background:var(--line);margin:14px 0}
 .aspect-vis{margin-top:12px;display:grid;place-items:center;padding:14px;background:var(--bg2);border-radius:12px;border:1px solid var(--line)}
+/* cabeçalho de card com botão à direita (ex.: abrir em tela cheia) */
+.card-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.card-head h3{margin:0;flex:1;min-width:0}
+/* pré-visualização em tela cheia: o bloco inteiro (controles + desenho) muda de lugar */
+#sceneHostFs{flex:1;min-width:0;min-height:0;padding:10px;display:flex}
+#sceneHostFs #sceneBody{flex:1;min-height:0;display:flex;flex-direction:column}
+#sceneHostFs .aspect-vis{flex:1;min-height:0}
 .aspect-box{border:2px solid var(--acc);border-radius:6px;background:rgba(61,123,255,.1);position:relative;max-width:100%}
 .aspect-box .lbl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;color:var(--mut);white-space:nowrap}
 
@@ -513,21 +520,28 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     </div>
 
     <div class="card">
-      <h3>Pré-visualização</h3>
-      <div class="row">
-        <div class="field">
-          <label>Pessoa de referência</label>
-          <div class="seg" id="segPerson">
-            <button data-on="1" class="on">Mostrar</button>
-            <button data-on="0">Ocultar</button>
+      <div class="card-head">
+        <h3>Pré-visualização</h3>
+        <button class="comp-ic" id="sceneFsB" title="Tela cheia" aria-label="Abrir a pré-visualização em tela cheia">⛶</button>
+      </div>
+      <div id="sceneHost">
+        <div id="sceneBody">
+          <div class="row">
+            <div class="field">
+              <label>Pessoa de referência</label>
+              <div class="seg" id="segPerson">
+                <button data-on="1" class="on">Mostrar</button>
+                <button data-on="0">Ocultar</button>
+              </div>
+            </div>
+            <div class="field" id="personHField">
+              <label>Altura da pessoa</label>
+              <div class="suffix"><input type="text" id="personH" value="1.70" step="0.05" min="0.5" inputmode="decimal"><span>m</span></div>
+            </div>
           </div>
-        </div>
-        <div class="field" id="personHField">
-          <label>Altura da pessoa</label>
-          <div class="suffix"><input type="text" id="personH" value="1.70" step="0.05" min="0.5" inputmode="decimal"><span>m</span></div>
+          <div class="aspect-vis"><svg id="aspectSvg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Painel com pessoa de referência"></svg></div>
         </div>
       </div>
-      <div class="aspect-vis"><svg id="aspectSvg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Painel com pessoa de referência"></svg></div>
     </div>
     </div>
 
@@ -1193,6 +1207,16 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
   <div class="comp-help">Arraste os canvas · <b>Espaço + arrastar</b> (ou arrastar o fundo) move a tela · scroll / pinça dá zoom</div>
 </div>
 
+<!-- Pré-visualização (painel + pessoa de referência) em tela cheia -->
+<div class="comp-fs" id="sceneFs" hidden>
+  <div class="comp-bar">
+    <b>Pré-visualização</b>
+    <button class="comp-ic" id="sceneClose" title="Fechar (Esc)" aria-label="Fechar tela cheia">✕</button>
+  </div>
+  <div class="comp-wrap"><div id="sceneHostFs"></div></div>
+  <div class="comp-help">Compare a escala do painel com a pessoa · <b>Esc</b> fecha</div>
+</div>
+
 <script src="equipment.js"></script>
 <script src="mp4-muxer.min.js"></script>
 <script>
@@ -1243,6 +1267,8 @@ document.querySelectorAll('.side-nav button[data-scr]').forEach(b=>{
     document.body.classList.remove('drawer-open');   // fecha a gaveta no mobile
     window.scrollTo(0,0);
     if(typeof mountGen==='function') mountGen();     // gerador segue o contexto (LED ↔ Projeção)
+    // com a aba oculta o card mede 0 e a pré-visualização saía na largura de reserva
+    if(b.dataset.scr==='pixel'&&typeof calcPixel==='function') calcPixel();
   };
 });
 $('collapseBtn').onclick=()=>document.body.classList.toggle('collapsed');
@@ -1314,7 +1340,11 @@ function drawScene(wM,hM){
   const cont=svg.parentElement;
   if(!(wM>0)||!(hM>0)){svg.innerHTML='';return;}
   const fx=n=>n.toFixed(1);
-  const availW0=Math.max(220,(cont.clientWidth||320)-28), maxH0=210, top0=10, bottom0=8;
+  // em tela cheia o desenho cresce com o container; no card mantém a altura de sempre
+  const emFs=sceneFsOn();
+  const availW0=Math.max(220,(cont.clientWidth||320)-28);
+  const maxH0=emFs?Math.max(240,(cont.clientHeight||420)-28):210;
+  const top0=10, bottom0=8;
   const thumb=panelThumb();   // imagem de teste em miniatura (ou null se ainda não houver)
   // painel: mostra o conteúdo de teste (sem borda); sem imagem, cai na caixa azul + medida
   const panelFill=(x0,y0,w,h)=>{
@@ -1387,6 +1417,42 @@ $('segPerson').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   calcPixel();
 });
 $('personH').addEventListener('input',()=>{personHeight=parseFloat($('personH').value)||1.7;calcPixel();});
+
+/* Pré-visualização em tela cheia — o bloco inteiro (controles + desenho) troca de
+   hospedeiro por appendChild, igual ao mapa da Composição. Declarações com
+   `function` de propósito: drawScene chama sceneFsOn() antes deste ponto (hoisting). */
+function sceneFsOn(){ const e=$('sceneFs'); return !!e && !e.hidden; }
+function lockBody(){                       // trava a rolagem se QUALQUER tela cheia estiver aberta
+  const comp=$('compFs'), scn=$('sceneFs');
+  document.body.classList.toggle('comp-open', (comp&&!comp.hidden)||(scn&&!scn.hidden));
+}
+function sceneFs(on){
+  const fs=$('sceneFs'), body=$('sceneBody'); if(!fs||!body) return;
+  fs.hidden=!on;
+  lockBody();
+  (on?$('sceneHostFs'):$('sceneHost')).appendChild(body);
+  // aplica na hora e reforça depois: rAF não dispara com a página em segundo plano
+  const aplica=()=>{ try{ calcPixel(); }catch(_){} };
+  aplica(); requestAnimationFrame(aplica); setTimeout(aplica,60);
+}
+(function initSceneFs(){
+  const b=$('sceneFsB'); if(b) b.onclick=()=>sceneFs(true);
+  const c=$('sceneClose'); if(c) c.onclick=()=>sceneFs(false);
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&sceneFsOn()) sceneFs(false); });
+  let t=null;
+  window.addEventListener('resize',()=>{ clearTimeout(t); t=setTimeout(()=>{ if(sceneFsOn()) calcPixel(); },120); });
+  /* Ao abrir a aba, o card ainda estava oculto (clientWidth 0) e o desenho saía na
+     largura de reserva, ficando menor que o card. Observa só a LARGURA — a altura é
+     definida pelo próprio SVG no card e observá-la entraria em laço. */
+  const vis=document.querySelector('#sceneBody .aspect-vis');
+  if(vis&&window.ResizeObserver){
+    let lw=0;
+    new ResizeObserver(()=>{
+      const w=vis.clientWidth;
+      if(w>0&&Math.abs(w-lw)>2){ lw=w; calcPixel(); }
+    }).observe(vis);
+  }
+})();
 
 // ===== Gerador de imagem de teste (PNG na resolução do painel) =====
 let logoRect=null, infoRect=null, dragEl=null;   // retângulos desenhados (px da imagem) + estado do arrasto
@@ -2402,7 +2468,7 @@ function cmapSide(force){
 function cmapFs(on){
   const fs=$('compFs'), st=$('compStage'); if(!fs||!st) return;
   fs.hidden=!on;
-  document.body.classList.toggle('comp-open',on);
+  lockBody();
   (on?$('compHostFs'):$('compHost')).appendChild(st);
   if(!on){ cmap.space=false; st.classList.remove('grab','grabbing','moving'); }
   // aplica na hora e reforça depois: rAF não dispara com a aba em segundo plano
