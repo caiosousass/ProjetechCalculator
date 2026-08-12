@@ -873,6 +873,11 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <div class="field"><label>Cliente <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfCli" placeholder="Nome do cliente" autocomplete="off"></div>
         <div class="field"><label>Evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfEvt" placeholder="Nome do evento" autocomplete="off"></div>
       </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><label>Nº da OS <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfOS" placeholder="Ex.: 1234" autocomplete="off"></div>
+        <div class="field"><label>Local do evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfLocal" placeholder="Ex.: Expo Center Norte" autocomplete="off"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Técnico(a) responsável <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfTec" placeholder="Nome do responsável" autocomplete="off"></div>
       <button class="btn btn-primary" data-pdf="power" style="width:100%;margin-top:12px">⬇ Baixar relatório em PDF</button>
       <div class="hint">Relatório completo: rede, equipamentos de cada setor, dimensionamento (disjuntor e cabo) e queda de tensão.</div>
     </div>
@@ -989,6 +994,11 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <div class="field"><label>Cliente <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfCli" placeholder="Nome do cliente" autocomplete="off"></div>
         <div class="field"><label>Evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfEvt" placeholder="Nome do evento" autocomplete="off"></div>
       </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><label>Nº da OS <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfOS" placeholder="Ex.: 1234" autocomplete="off"></div>
+        <div class="field"><label>Local do evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfLocal" placeholder="Ex.: Expo Center Norte" autocomplete="off"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Técnico(a) responsável <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfTec" placeholder="Nome do responsável" autocomplete="off"></div>
       <button class="btn btn-primary" data-pdf="proj" style="width:100%;margin-top:12px">⬇ Baixar relatório em PDF</button>
       <div class="hint">Inclui o cálculo de projeção e, na multiprojeção, os dados do blending com a imagem do pixel map.</div>
     </div>
@@ -1074,6 +1084,11 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <div class="field"><label>Cliente <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfCli" placeholder="Nome do cliente" autocomplete="off"></div>
         <div class="field"><label>Evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfEvt" placeholder="Nome do evento" autocomplete="off"></div>
       </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><label>Nº da OS <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfOS" placeholder="Ex.: 1234" autocomplete="off"></div>
+        <div class="field"><label>Local do evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfLocal" placeholder="Ex.: Expo Center Norte" autocomplete="off"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Técnico(a) responsável <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfTec" placeholder="Nome do responsável" autocomplete="off"></div>
       <button class="btn btn-primary" data-pdf="audio" style="width:100%;margin-top:12px">⬇ Baixar relatório em PDF</button>
       <div class="hint">Inclui o delay de cada torre (ms e samples) e o SPL/cobertura configurados.</div>
     </div>
@@ -1098,6 +1113,11 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <div class="field"><label>Cliente <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfCli" placeholder="Nome do cliente" autocomplete="off"></div>
         <div class="field"><label>Evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfEvt" placeholder="Nome do evento" autocomplete="off"></div>
       </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><label>Nº da OS <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfOS" placeholder="Ex.: 1234" autocomplete="off"></div>
+        <div class="field"><label>Local do evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfLocal" placeholder="Ex.: Expo Center Norte" autocomplete="off"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Técnico(a) responsável <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfTec" placeholder="Nome do responsável" autocomplete="off"></div>
       <button class="btn btn-primary" data-pdf="light" style="width:100%;margin-top:12px">⬇ Baixar mapa DMX em PDF</button>
       <div class="hint">Mapa completo: cada lista com seus aparelhos, canais, quantidade e o endereço de cada unidade.</div>
     </div>
@@ -2893,7 +2913,19 @@ $('segAudio').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   const a=b.dataset.a;
   $('audioSpl').style.display   = a==='spl'   ? '' : 'none';
   $('audioDelay').style.display = a==='delay' ? '' : 'none';
+  updAudioPdfUI();
 });
+/* o PDF de áudio exporta só a ferramenta aberta (Delay ou SPL) */
+function updAudioPdfUI(){
+  const spl=(document.querySelector('#segAudio .on')||{}).dataset?.a==='spl';
+  const b=document.querySelector('[data-pdf="audio"]'); if(!b) return;
+  b.textContent = spl ? '⬇ Baixar PDF do SPL' : '⬇ Baixar PDF do delay';
+  const h=b.parentElement.querySelector('.hint');
+  if(h) h.textContent = spl
+    ? 'Exporta o SPL na distância e a cobertura (alvo) desta aba.'
+    : 'Exporta o delay de cada torre (ms e samples) desta aba.';
+}
+updAudioPdfUI();
 
 /* ===== ÁUDIO · Delay de torres (lista) ===== */
 let towerSeq=0;
@@ -3432,18 +3464,25 @@ if('serviceWorker' in navigator){
     d.setTextColor(20); d.setFont('helvetica','bold'); d.setFontSize(16); d.text(titulo, D.M, D.y); D.y+=6;
     d.setFont('helvetica','normal'); d.setFontSize(10); d.setTextColor(120); d.text(sub, D.M, D.y); D.y+=6;
     d.setDrawColor(210); d.line(D.M,D.y,D.PW-D.M,D.y); D.y+=8;
-    // cliente/evento vêm dos campos do card "Exportar" da própria tela
+    // identificação: campos do card "Exportar" da própria tela
     var card=btn.closest('.card');
-    var cli=(card.querySelector('.pdfCli')||{}).value, evt=(card.querySelector('.pdfEvt')||{}).value;
-    cli=(cli||'').trim(); evt=(evt||'').trim();
-    var meta=[]; if(cli) meta.push(['Cliente',cli]); if(evt) meta.push(['Evento',evt]);
+    var g=function(c){ var e=card.querySelector(c); return ((e&&e.value)||'').trim(); };
+    var cli=g('.pdfCli'), evt=g('.pdfEvt'), os=g('.pdfOS'), local=g('.pdfLocal'), tec=g('.pdfTec');
+    var meta=[];
+    if(cli) meta.push(['Cliente',cli]);
+    if(evt) meta.push(['Evento',evt]);
+    if(os) meta.push(['Nº da OS',os]);
+    if(local) meta.push(['Local',local]);
+    if(tec) meta.push(['Técnico(a) responsável',tec]);
     if(meta.length) D.kv(meta);
     D.foot();
-    return {D:D, cli:cli, evt:evt};
+    return {D:D, cli:cli, evt:evt, os:os};
   }
   function saveAs(ctx, base){
-    var nome=(ctx.evt||ctx.cli) ? (base+' - '+(ctx.evt||ctx.cli)) : ('Projetech - '+base);
-    ctx.D.d.save(nome+'.pdf');
+    var quem=ctx.evt||ctx.cli;
+    var nome=base + (ctx.os?(' - OS '+ctx.os):'') + (quem?(' - '+quem):'');
+    if(!ctx.os && !quem) nome='Projetech - '+base;
+    ctx.D.d.save(nome.replace(/[\\/:*?"<>|]/g,'-')+'.pdf');
   }
 
   /* ---------- ELÉTRICA (o mais detalhado) ---------- */
@@ -3517,7 +3556,12 @@ if('serviceWorker' in navigator){
 
   /* ---------- ÁUDIO ---------- */
   async function pdfAudio(btn){
-    var ctx=await startDoc('Relatório de Áudio','Delay de torres e SPL · gerado pela Projetech Calculator',btn), D=ctx.D;
+    // exporta só a ferramenta aberta na aba (Delay ou SPL)
+    var aba=document.querySelector('#segAudio .on');
+    var isSpl=!!(aba && aba.dataset.a==='spl');
+    var ctx=await startDoc(isSpl?'Relatório de Áudio · SPL':'Relatório de Áudio · Delay de torres',
+                           (isSpl?'SPL na distância e cobertura':'Alinhamento temporal das torres')+' · gerado pela Projetech Calculator', btn), D=ctx.D;
+    if(isSpl) return pdfAudioSPL(ctx,D);
     D.head('Delay de torres');
     D.kv([['Temperatura',(($('dlTemp')||{}).value||'—')+' °C'],['Offset (Haas)',(($('dlOffset')||{}).value||'0')+' ms']]);
     var torres=[].slice.call(document.querySelectorAll('#dlTowers .tower')).map(function(t){
@@ -3528,17 +3572,19 @@ if('serviceWorker' in navigator){
     });
     if(torres.length) D.table([{t:'Torre',w:34},{t:'Distância',w:18,a:'right'},{t:'Atraso',w:18,a:'right'},{t:'Samples @48k',w:22,a:'right'}], torres);
     D.note(txt($('dlHint')));
-
+    saveAs(ctx,'Relatorio Audio - Delay');
+  }
+  function pdfAudioSPL(ctx,D){
+    var cx=$('splBox'), caixa=cx&&cx.options[cx.selectedIndex]?cx.options[cx.selectedIndex].text:'—';
+    D.head('SPL na distância');
+    D.kv([['Caixa',caixa],
+          ['Referência',txt(document.querySelector('#segSplRef .on'))||'—'],
+          ['Máx. SPL @1m',(($('splRef')||{}).value||'—')+' dB'],
+          ['Propagação',txt(document.querySelector('#segSplModel .on'))||'—'],
+          ['Distância',(($('splDist')||{}).value||'—')+' m']]);
     var spl=statsOf($('splResults'));
-    if(spl.length){
-      var cx=$('splBox'), caixa=cx&&cx.options[cx.selectedIndex]?cx.options[cx.selectedIndex].text:'—';
-      D.head('SPL na distância');
-      D.kv([['Caixa',caixa],
-            ['Referência',txt(document.querySelector('#segSplRef .on'))||'—'],
-            ['Propagação',txt(document.querySelector('#segSplModel .on'))||'—'],
-            ['Distância',(($('splDist')||{}).value||'—')+' m']]);
-      D.kv(spl);
-    }
+    if(spl.length) D.kv(spl);
+    D.note(txt($('splHint')));
     var cov=statsOf($('covResults'));
     if(cov.length){
       D.head('Cobertura (alvo)');
@@ -3548,7 +3594,7 @@ if('serviceWorker' in navigator){
       D.kv(cov);
       D.note(txt($('covHint')));
     }
-    saveAs(ctx,'Relatorio Audio');
+    saveAs(ctx,'Relatorio Audio - SPL');
   }
 
   /* ---------- PROJEÇÃO ---------- */
