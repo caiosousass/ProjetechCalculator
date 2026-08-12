@@ -1411,10 +1411,10 @@ function drawTestProj(){
   const o={};
   // grade e números do padrão saem daqui (viram overlay CONTÍNUO no canvas todo,
   // pra as linhas se encontrarem e a numeração ser 1..N sem reiniciar por projetor)
-  const _grid=tiOpts.grid, _numbers=tiOpts.numbers;
-  tiOpts.grid=false; tiOpts.numbers=false;
+  const _grid=tiOpts.grid, _numbers=tiOpts.numbers, _circle=tiOpts.circle;
+  tiOpts.grid=false; tiOpts.numbers=false; tiOpts.circle=false;   // círculos também viram overlay contínuo
   drawTest(off,{totPxW:g.pxW,totPxH:g.pxH,cols:gc,rows,pxw:g.pxW/gc,pxh:g.pxH/rows,mW:g.Wp,mH:g.Hp,noLogo:soloLogo,noInfo:true,__out:o});
-  tiOpts.grid=_grid; tiOpts.numbers=_numbers;
+  tiOpts.grid=_grid; tiOpts.numbers=_numbers; tiOpts.circle=_circle;
   sliceRef={x:rects[0].x,y:rects[0].y,w:rects[0].w,h:rects[0].h};  // projetor 1 = referência do arrasto
   if(o.logo) logoRect={x:o.logo.x,y:o.logo.y,w:o.logo.w,h:o.logo.h};
   if(o.info) infoRect={x:o.info.x,y:o.info.y,w:o.info.w,h:o.info.h};
@@ -1486,6 +1486,14 @@ function drawProjOverlay(ctx,g,rects){
   const numRad=Math.max(11,cellW*0.20);
   const yNumTop=numRad+S*3, yNumBot=H-footH-numRad-S*3;
   const topFree=projOpts.cnum ? yNumTop+numRad+S*4 : bwEdge+S*2;   // 1ª altura livre abaixo dos números
+  // círculos CONTÍNUOS (estilo VIOSO): diâmetro ~ altura da imagem, repetidos ao longo da largura —
+  // atravessam as emendas, então um desalinhamento entre projetores "quebra" o círculo na hora
+  if(tiOpts.circle){
+    const nC=Math.max(1,Math.round(W/H)), swC=W/nC, rC=Math.min(swC,H)*0.46;
+    ctx.save(); ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=Math.max(2,S*1.8);
+    for(let i=0;i<nC;i++){ ctx.beginPath(); ctx.arc((i+0.5)*swC, H/2, rC, 0, Math.PI*2); ctx.stroke(); }
+    ctx.restore();
+  }
   // grade contínua — verticais e horizontais se encontram em todo o canvas
   if(projOpts.grid){
     ctx.save(); ctx.strokeStyle='rgba(255,255,255,.16)'; ctx.lineWidth=S; ctx.beginPath();
