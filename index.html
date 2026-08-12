@@ -866,6 +866,16 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <a href="https://www.ipaam.am.gov.br/wp-content/uploads/2021/01/NBR-05410-05-Instala%C3%A7%C3%B5es-El%C3%A9tricas-de-baixa-Tens%C3%A3o.pdf" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;color:var(--acc2);font-weight:700">Consultar a NBR 5410 (todas as condições) ›</a>
       </div>
     </details>
+
+    <div class="card">
+      <h3>Exportar</h3>
+      <div class="row">
+        <div class="field"><label>Cliente <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfCli" placeholder="Nome do cliente" autocomplete="off"></div>
+        <div class="field"><label>Evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfEvt" placeholder="Nome do evento" autocomplete="off"></div>
+      </div>
+      <button class="btn btn-primary" data-pdf="power" style="width:100%;margin-top:12px">⬇ Baixar relatório em PDF</button>
+      <div class="hint">Relatório completo: rede, equipamentos de cada setor, dimensionamento (disjuntor e cabo) e queda de tensão.</div>
+    </div>
   </section>
 
   <!-- ============ PROJETOR ============ -->
@@ -972,6 +982,16 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div id="genHostProj"></div>
       <div class="hint">Imagem única na resolução total efetiva, gerada a partir do Blending acima: cada projetor recebe o padrão de teste completo (fundo, marcações, logo, info e efeito), com contorno numerado e zonas de blend destacadas.</div>
     </div>
+
+    <div class="card">
+      <h3>Exportar</h3>
+      <div class="row">
+        <div class="field"><label>Cliente <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfCli" placeholder="Nome do cliente" autocomplete="off"></div>
+        <div class="field"><label>Evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfEvt" placeholder="Nome do evento" autocomplete="off"></div>
+      </div>
+      <button class="btn btn-primary" data-pdf="proj" style="width:100%;margin-top:12px">⬇ Baixar relatório em PDF</button>
+      <div class="hint">Inclui o cálculo de projeção e, na multiprojeção, os dados do blending com a imagem do pixel map.</div>
+    </div>
   </section>
 
   <!-- ============ ÁUDIO ============ -->
@@ -1047,6 +1067,16 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="hint">Cada torre é alinhada à PA principal — informe a distância da caixa principal até ela. O offset (≈10–15 ms) faz o som "puxar" pro palco (efeito Haas).</div>
     </div>
     </div>
+
+    <div class="card">
+      <h3>Exportar</h3>
+      <div class="row">
+        <div class="field"><label>Cliente <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfCli" placeholder="Nome do cliente" autocomplete="off"></div>
+        <div class="field"><label>Evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfEvt" placeholder="Nome do evento" autocomplete="off"></div>
+      </div>
+      <button class="btn btn-primary" data-pdf="audio" style="width:100%;margin-top:12px">⬇ Baixar relatório em PDF</button>
+      <div class="hint">Inclui o delay de cada torre (ms e samples) e o SPL/cobertura configurados.</div>
+    </div>
   </section>
 
   <section class="screen" id="scr-light">
@@ -1060,6 +1090,16 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <h3>Resultado geral</h3>
       <div class="results" id="dmxTotal"></div>
       <div class="hint">Endereços contínuos por universo de 512 canais — a Lista 2 continua de onde a Lista 1 parou. O nº de canais por aparelho é <b>provisório</b>; ajuste no campo "Canais" (editável) conforme o manual.</div>
+    </div>
+
+    <div class="card">
+      <h3>Exportar</h3>
+      <div class="row">
+        <div class="field"><label>Cliente <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfCli" placeholder="Nome do cliente" autocomplete="off"></div>
+        <div class="field"><label>Evento <small style="color:var(--mut2)">(opc.)</small></label><input type="text" class="pdfEvt" placeholder="Nome do evento" autocomplete="off"></div>
+      </div>
+      <button class="btn btn-primary" data-pdf="light" style="width:100%;margin-top:12px">⬇ Baixar mapa DMX em PDF</button>
+      <div class="hint">Mapa completo: cada lista com seus aparelhos, canais, quantidade e o endereço de cada unidade.</div>
     </div>
   </section>
     </main>
@@ -3271,6 +3311,281 @@ if('serviceWorker' in navigator){
       btn.disabled=false; btn.textContent=original;
     }
   };
+})();
+</script>
+
+<script>
+/* ===== Relatórios em PDF: Elétrica · Iluminação · Áudio · Projeção ===== */
+(function(){
+  var $=function(id){ return document.getElementById(id); };
+  var txt=function(el){ return el ? el.textContent.replace(/\s+/g,' ').trim() : ''; };
+  function loadJsPDF(){
+    return new Promise(function(res,rej){
+      if(window.jspdf && window.jspdf.jsPDF) return res();
+      var s=document.createElement('script'); s.src='jspdf.umd.min.js';
+      s.onload=function(){res();}; s.onerror=function(){rej(new Error('Falha ao carregar o gerador de PDF.'));};
+      document.head.appendChild(s);
+    });
+  }
+  function loadImg(src){ return new Promise(function(res,rej){ var i=new Image(); i.onload=function(){res(i);}; i.onerror=rej; i.src=src; }); }
+  // lê os cartões de resultado de um container (.stat → [rótulo, valor])
+  function statsOf(el){
+    if(!el) return [];
+    return [].slice.call(el.querySelectorAll('.stat')).map(function(s){
+      return [txt(s.querySelector('.k')), txt(s.querySelector('.v'))];
+    }).filter(function(r){ return r[0]; });
+  }
+
+  // a fonte padrão do PDF não tem emoji nem símbolos matemáticos — troca por equivalentes legíveis
+  function clean(s){
+    return String(s==null?'':s)
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{2B00}-\u{2BFF}]/gu,'')
+      .replace(/↔/g,'-').replace(/[−–—]/g,'-').replace(/≈/g,'~')
+      .replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/Δ/g,'Dif. ')
+      .replace(/[“”]/g,'"').replace(/[‘’]/g,"'")
+      .replace(/\s{2,}/g,' ').trim();
+  }
+  function Doc(jsPDF){
+    var d=new jsPDF({unit:'mm',format:'a4',compress:true});
+    var ot=d.text.bind(d);
+    d.text=function(t,x,y,o){ return ot(Array.isArray(t)?t.map(clean):clean(t), x, y, o); };
+    this.d=d; this.PW=d.internal.pageSize.getWidth(); this.M=14; this.y=14; this.PH=297;
+  }
+  Doc.prototype.room=function(need){ if(this.y+(need||0)>281){ this.d.addPage(); this.y=16; this.foot(); } };
+  Doc.prototype.foot=function(){
+    var d=this.d; d.setFontSize(8); d.setTextColor(150); d.setFont('helvetica','normal');
+    d.text('Projetech Eventos · Projetech Calculator', this.M, 290);
+  };
+  Doc.prototype.head=function(t){
+    this.room(10); var d=this.d;
+    d.setFont('helvetica','bold'); d.setFontSize(11); d.setTextColor(60);
+    d.text(t, this.M, this.y); this.y+=5;
+  };
+  Doc.prototype.sub=function(t){
+    this.room(8); var d=this.d;
+    d.setFont('helvetica','bold'); d.setFontSize(9.5); d.setTextColor(30);
+    d.text(t, this.M, this.y); this.y+=4.5;
+  };
+  Doc.prototype.note=function(t){
+    var d=this.d; d.setFont('helvetica','normal'); d.setFontSize(8.5); d.setTextColor(130);
+    var lines=d.splitTextToSize(t, this.PW-2*this.M);
+    this.room(lines.length*4+2);
+    d.text(lines, this.M, this.y); this.y+=lines.length*4+2;
+  };
+  Doc.prototype.kv=function(rows){
+    var d=this.d; d.setFontSize(9.5);
+    for(var i=0;i<rows.length;i++){
+      this.room(7);
+      d.setTextColor(110); d.setFont('helvetica','normal'); d.text(String(rows[i][0]), this.M, this.y);
+      d.setTextColor(30);  d.setFont('helvetica','bold');
+      d.text(String(rows[i][1]), this.PW-this.M, this.y, {align:'right'});
+      d.setDrawColor(235); d.line(this.M, this.y+2, this.PW-this.M, this.y+2);
+      this.y+=6.5;
+    }
+    this.y+=2;
+  };
+  // tabela simples: cols = [{t:'Título', w:mm, a:'right'?}]
+  Doc.prototype.table=function(cols,rows){
+    var d=this.d, M=this.M, self=this;
+    var total=cols.reduce(function(s,c){return s+c.w;},0), esc=(this.PW-2*M)/total;
+    function line(vals,bold,color){
+      self.room(6.5);
+      var x=M;
+      d.setFont('helvetica',bold?'bold':'normal'); d.setFontSize(8.5); d.setTextColor(color==null?60:color);
+      for(var i=0;i<cols.length;i++){
+        var w=cols[i].w*esc, s=String(vals[i]==null?'':vals[i]);
+        s=d.splitTextToSize(s, w-2)[0]||'';
+        if(cols[i].a==='right') d.text(s, x+w-2, self.y, {align:'right'});
+        else d.text(s, x, self.y);
+        x+=w;
+      }
+      self.y+=5;
+    }
+    line(cols.map(function(c){return c.t;}), true, 110);
+    d.setDrawColor(220); d.line(M, this.y-3.4, this.PW-M, this.y-3.4);
+    for(var i=0;i<rows.length;i++) line(rows[i], false, 40);
+    this.y+=3;
+  };
+
+  async function startDoc(titulo, sub, btn){
+    await loadJsPDF();
+    var D=new Doc(window.jspdf.jsPDF), d=D.d;
+    try{ var logo=await loadImg('logo.png'); var lh=12, lw=lh*(logo.width/logo.height); d.addImage(logo,'PNG',D.M,D.y,lw,lh); }catch(e){}
+    var agora=new Date();
+    d.setFontSize(9); d.setTextColor(120);
+    d.text(agora.toLocaleDateString('pt-BR')+' · '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}), D.PW-D.M, D.y+4, {align:'right'});
+    D.y+=18;
+    d.setTextColor(20); d.setFont('helvetica','bold'); d.setFontSize(16); d.text(titulo, D.M, D.y); D.y+=6;
+    d.setFont('helvetica','normal'); d.setFontSize(10); d.setTextColor(120); d.text(sub, D.M, D.y); D.y+=6;
+    d.setDrawColor(210); d.line(D.M,D.y,D.PW-D.M,D.y); D.y+=8;
+    // cliente/evento vêm dos campos do card "Exportar" da própria tela
+    var card=btn.closest('.card');
+    var cli=(card.querySelector('.pdfCli')||{}).value, evt=(card.querySelector('.pdfEvt')||{}).value;
+    cli=(cli||'').trim(); evt=(evt||'').trim();
+    var meta=[]; if(cli) meta.push(['Cliente',cli]); if(evt) meta.push(['Evento',evt]);
+    if(meta.length) D.kv(meta);
+    D.foot();
+    return {D:D, cli:cli, evt:evt};
+  }
+  function saveAs(ctx, base){
+    var nome=(ctx.evt||ctx.cli) ? (base+' - '+(ctx.evt||ctx.cli)) : ('Projetech - '+base);
+    ctx.D.d.save(nome+'.pdf');
+  }
+
+  /* ---------- ELÉTRICA (o mais detalhado) ---------- */
+  async function pdfPower(btn){
+    var ctx=await startDoc('Relatório Elétrico','Dimensionamento por setor · NBR 5410 · gerado pela Projetech Calculator',btn), D=ctx.D;
+    var volt=txt(document.querySelector('#segVolt .on'))||'—';
+    var sist=txt(document.querySelector('#segPhase .on'))||'—';
+    D.head('Rede');
+    D.kv([['Tensão',volt],['Sistema',sist],['Fator de potência',($('pf')||{}).value||'—']]);
+
+    var setores=[].slice.call(document.querySelectorAll('#sectors .sector'));
+    setores.forEach(function(sec){
+      var nome=txt(sec.querySelector('.sector-title'))||'Setor';
+      var resumo=txt(sec.querySelector('.sector-summary'));
+      D.head('Setor · '+nome+(resumo?('   ('+resumo+')'):''));
+      // equipamentos
+      var eqs=[].slice.call(sec.querySelectorAll('.eq')).map(function(e){
+        var n=(e.querySelector('.nm')||{}).value||'', w=(e.querySelector('.pw')||{}).value||'', q=(e.querySelector('.qt')||{}).value||'';
+        if(!n && !w) return null;
+        var tot=(parseFloat(w)||0)*(parseInt(q)||0);
+        return [n||'—', (w||'—'), (q||'—'), tot?tot.toLocaleString('pt-BR')+' W':'—'];
+      }).filter(Boolean);
+      if(eqs.length) D.table([{t:'Equipamento',w:60},{t:'W un.',w:14,a:'right'},{t:'Qtd',w:10,a:'right'},{t:'Total',w:18,a:'right'}], eqs);
+      // fases ligadas
+      var ph=[].slice.call(sec.querySelectorAll('.ph-btn.on')).map(function(b){return txt(b);});
+      if(ph.length) D.kv([['Fases ligadas', ph.join(' · ')]]);
+      // resultado do setor + queda
+      var rs=statsOf(sec.querySelector('.sector-res-body'));
+      if(rs.length){ D.sub('Resultado do setor'); D.kv(rs); }
+      var vd=statsOf(sec.querySelector('.vd-body'));
+      if(vd.length){
+        var len=(sec.querySelector('.vd-len')||{}).value;
+        D.sub('Queda de tensão'+(len?(' · cabo de '+len+' m'):''));
+        D.kv(vd);
+      }
+    });
+
+    var tot=statsOf($('powerResults'));
+    if(tot.length){ D.head('Resultado geral'); D.kv(tot); }
+    var vdT=statsOf($('vdResults'));
+    if(vdT.length){
+      var l=($('vdLen')||{}).value, b=$('vdSec'), bs=b&&b.options[b.selectedIndex]?b.options[b.selectedIndex].text:'';
+      D.sub('Queda de tensão do alimentador'+(l?(' · '+l+' m'):'')+(bs?(' · '+bs):''));
+      D.kv(vdT);
+    }
+    D.note(txt($('powerHint')));
+    D.note('Potência máxima dos equipamentos. O consumo real varia com o uso (brilho do LED/luz, volume do áudio etc.) — dimensionado pelo máximo, por segurança. Confirme sempre com o responsável técnico.');
+    saveAs(ctx,'Relatorio Eletrico');
+  }
+
+  /* ---------- ILUMINAÇÃO (mapa DMX) ---------- */
+  async function pdfLight(btn){
+    var ctx=await startDoc('Mapa DMX','Endereçamento de iluminação · gerado pela Projetech Calculator',btn), D=ctx.D;
+    var tot=statsOf($('dmxTotal'));
+    if(tot.length){ D.head('Resumo'); D.kv(tot); }
+    [].slice.call(document.querySelectorAll('#dmxLists .dmx-list')).forEach(function(sec){
+      var nome=(sec.querySelector('.list-name')||{}).value||'Lista';
+      var resumo=txt(sec.querySelector('.sector-summary'));
+      D.head('Lista · '+nome+(resumo?('   ('+resumo+')'):''));
+      var rows=[].slice.call(sec.querySelectorAll('.dmx-fx-row')).map(function(r){
+        var nm=txt(r.querySelector('.dmx-fx-nm')), ad=txt(r.querySelector('.dmx-addr'));
+        var m=nm.match(/^(.*?)\s*·\s*(\d+)\s*ch\s*·\s*×(\d+)/);
+        return m ? [m[1], m[2], m[3], ad] : [nm,'','',ad];
+      });
+      if(rows.length) D.table([{t:'Aparelho',w:46},{t:'Canais',w:12,a:'right'},{t:'Qtd',w:9,a:'right'},{t:'Endereços (universo · início)',w:63}], rows);
+      else D.note('Sem aparelhos nesta lista.');
+    });
+    D.note('Endereços contínuos por universo de 512 canais. Confira o nº de canais de cada aparelho no manual antes da montagem.');
+    saveAs(ctx,'Mapa DMX');
+  }
+
+  /* ---------- ÁUDIO ---------- */
+  async function pdfAudio(btn){
+    var ctx=await startDoc('Relatório de Áudio','Delay de torres e SPL · gerado pela Projetech Calculator',btn), D=ctx.D;
+    D.head('Delay de torres');
+    D.kv([['Temperatura',(($('dlTemp')||{}).value||'—')+' °C'],['Offset (Haas)',(($('dlOffset')||{}).value||'0')+' ms']]);
+    var torres=[].slice.call(document.querySelectorAll('#dlTowers .tower')).map(function(t){
+      var n=(t.querySelector('.tw-name')||{}).value||'Torre', d=(t.querySelector('.tw-dist')||{}).value||'';
+      var st=statsOf(t.querySelector('.tw-out'));
+      var get=function(re){ var f=st.find(function(s){return re.test(s[0]);}); return f?f[1]:'—'; };
+      return [n, d?d+' m':'—', get(/atraso/i), get(/samples/i)];
+    });
+    if(torres.length) D.table([{t:'Torre',w:34},{t:'Distância',w:18,a:'right'},{t:'Atraso',w:18,a:'right'},{t:'Samples @48k',w:22,a:'right'}], torres);
+    D.note(txt($('dlHint')));
+
+    var spl=statsOf($('splResults'));
+    if(spl.length){
+      var cx=$('splBox'), caixa=cx&&cx.options[cx.selectedIndex]?cx.options[cx.selectedIndex].text:'—';
+      D.head('SPL na distância');
+      D.kv([['Caixa',caixa],
+            ['Referência',txt(document.querySelector('#segSplRef .on'))||'—'],
+            ['Propagação',txt(document.querySelector('#segSplModel .on'))||'—'],
+            ['Distância',(($('splDist')||{}).value||'—')+' m']]);
+      D.kv(spl);
+    }
+    var cov=statsOf($('covResults'));
+    if(cov.length){
+      D.head('Cobertura (alvo)');
+      D.kv([['SPL alvo',(($('covTarget')||{}).value||'—')+' dB'],
+            ['Primeira fila',(($('covFront')||{}).value||'—')+' m'],
+            ['Última fila',(($('covBack')||{}).value||'—')+' m']]);
+      D.kv(cov);
+      D.note(txt($('covHint')));
+    }
+    saveAs(ctx,'Relatorio Audio');
+  }
+
+  /* ---------- PROJEÇÃO ---------- */
+  async function pdfProj(btn){
+    var multi = $('projBlend') && $('projBlend').style.display!=='none';
+    var ctx=await startDoc('Relatório de Projeção', (multi?'Multiprojeção e blending':'Cálculo de projeção')+' · gerado pela Projetech Calculator', btn), D=ctx.D;
+    if(!multi){
+      var asp=$('aspect'), aspT=asp&&asp.options[asp.selectedIndex]?asp.options[asp.selectedIndex].text:'—';
+      D.head('Dados');
+      D.kv([['Modo',txt(document.querySelector('#segProj .on'))||'—'],
+            ['Throw ratio',($('throw')||{}).value||'—'],
+            ['Distância',(($('dist')||{}).value||'—')+' m'],
+            ['Proporção',aspT]]);
+      var r=statsOf($('projResults'));
+      if(r.length){ D.head('Resultado'); D.kv(r); }
+    }else{
+      var rp=$('bResPreset'), rpT=rp&&rp.options[rp.selectedIndex]?rp.options[rp.selectedIndex].text:'—';
+      D.head('Blending');
+      D.kv([['Projetores',(($('bpH')||{}).value||'—')+' × '+(($('bpV')||{}).value||'—')],
+            ['Sobreposição',(($('bOverlap')||{}).value||'—')+' %'],
+            ['Largura total',(($('bWidth')||{}).value||'—')+' m'],
+            ['Resolução nativa',rpT],
+            ['Throw ratio',($('bThrow')||{}).value||'—']]);
+      var rb=statsOf($('blendResults'));
+      if(rb.length){ D.head('Resultado'); D.kv(rb); }
+      // imagem do pixel map da multiprojeção
+      try{
+        var cv=$('tiCanvas');
+        if(cv && cv.width && typeof genTarget!=='undefined' && genTarget==='proj'){
+          var sc=Math.min(1,1600/cv.width);
+          var tmp=document.createElement('canvas'); tmp.width=Math.round(cv.width*sc); tmp.height=Math.round(cv.height*sc);
+          tmp.getContext('2d').drawImage(cv,0,0,tmp.width,tmp.height);
+          var data=tmp.toDataURL('image/jpeg',0.9);
+          var iw=D.PW-2*D.M, ih=iw*(cv.height/cv.width);
+          D.room(ih+8); D.head('Pixel map');
+          D.d.addImage(data,'JPEG',D.M,D.y,iw,ih); D.y+=ih+4;
+        }
+      }catch(e){}
+    }
+    saveAs(ctx,'Relatorio Projecao');
+  }
+
+  var makers={power:pdfPower, light:pdfLight, audio:pdfAudio, proj:pdfProj};
+  document.querySelectorAll('[data-pdf]').forEach(function(b){
+    b.onclick=async function(){
+      var o=b.textContent; b.disabled=true; b.textContent='Gerando…';
+      try{ await makers[b.dataset.pdf](b); }
+      catch(err){ alert('Não foi possível gerar o PDF: '+((err&&err.message)||err)); }
+      finally{ b.disabled=false; b.textContent=o; }
+    };
+  });
 })();
 </script>
 
