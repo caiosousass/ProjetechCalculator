@@ -469,6 +469,42 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="hint">A quantidade de gabinetes é calculada pela dimensão ÷ tamanho do módulo (gabinetes inteiros).</div>
     </div>
 
+    <details class="card ref-card" id="wireCard">
+      <summary>Cabeamento (opcional)</summary>
+      <div class="row">
+        <div class="field">
+          <label>Início</label>
+          <div class="seg" id="segWireStart">
+            <button data-s="tl" title="Superior esquerda"><svg viewBox="0 0 22 22" width="18" height="18"><rect x="1.5" y="1.5" width="19" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><circle cx="6" cy="6" r="3.2" fill="currentColor"/></svg></button>
+            <button data-s="tr" class="on" title="Superior direita"><svg viewBox="0 0 22 22" width="18" height="18"><rect x="1.5" y="1.5" width="19" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><circle cx="16" cy="6" r="3.2" fill="currentColor"/></svg></button>
+            <button data-s="bl" title="Inferior esquerda"><svg viewBox="0 0 22 22" width="18" height="18"><rect x="1.5" y="1.5" width="19" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><circle cx="6" cy="16" r="3.2" fill="currentColor"/></svg></button>
+            <button data-s="br" title="Inferior direita"><svg viewBox="0 0 22 22" width="18" height="18"><rect x="1.5" y="1.5" width="19" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><circle cx="16" cy="16" r="3.2" fill="currentColor"/></svg></button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Sentido</label>
+          <div class="seg" id="segWireDir">
+            <button data-d="v" class="on">Vertical</button>
+            <button data-d="h">Horizontal</button>
+          </div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label>Caminho</label>
+        <div class="seg" id="segWireSerp">
+          <button data-p="1" class="on">Serpentina</button>
+          <button data-p="0">Sempre no mesmo sentido</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <div class="field"><label>Limite por porta</label><div class="suffix"><input type="text" id="wirePx" value="650000" inputmode="numeric"><span>px</span></div></div>
+        <div class="field"><label>Máx. gabinetes / porta <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="text" id="wireMax" value="" placeholder="—" inputmode="numeric"><span>un</span></div></div>
+      </div>
+      <div class="results" id="wireResults" style="margin-top:14px"></div>
+      <div class="ti-preview" style="margin-top:12px"><canvas id="wireCv"></canvas></div>
+      <div class="hint">Cada cor é uma porta da processadora; o número é a ordem de ligação dentro dela e a linha mostra o caminho do cabo. A porta fecha pelo limite de pixels ou de gabinetes — o que vier primeiro.</div>
+    </details>
+
     <div class="card" id="pixel-results-card">
       <h3>Resultado</h3>
       <div class="results" id="pixelResults"></div>
@@ -1218,6 +1254,7 @@ function calcPixel(){
   lastWM=wM; lastHM=hM;     // guarda p/ o preview redesenhar quando a imagem de teste mudar
   pmeta={totPxW,totPxH,cols,rows,pxw,pxh,pitch};
   drawTest();               // desenha a imagem de teste e, no modo single, sincroniza o preview
+  if(typeof calcWire==='function' && $('wireCard') && $('wireCard').open) calcWire();
 }
 let lastWM=0, lastHM=0;
 // Miniatura da imagem de teste (a partir do baseCv) p/ preencher o painel no preview.
@@ -1312,6 +1349,100 @@ function drawScene(wM,hM){
 function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a;}
 function simplifyAspect(w,h){if(!w||!h)return'—';const g=gcd(w,h);return `${w/g}:${h/g}`;}
 ['mw','mh','mpxw','mpxh','wallw','wallh','mkg','mavg','mmax','mcase'].forEach(id=>$(id).addEventListener('input',calcPixel));
+
+/* ===== Cabeamento: ordem dos gabinetes e divisão por porta da processadora ===== */
+let wireStart='tr', wireDir='v', wireSerp=true;
+const WIRE_COLS=['#3d7bff','#22d3ee','#22c55e','#f59e0b','#a855f7','#ef4444','#eab308','#14b8a6'];
+// caminho de ligação: canto de início + sentido + serpentina (cobre as 16 combinações)
+function wireOrder(cols,rows){
+  const ord=[], fromRight=wireStart.includes('r'), fromBottom=wireStart.includes('b');
+  if(wireDir==='v'){
+    for(let i=0;i<cols;i++){
+      const col=fromRight?cols-1-i:i, volta=wireSerp&&i%2===1;
+      for(let j=0;j<rows;j++){
+        const base=fromBottom?rows-1-j:j;
+        ord.push({col, row: volta ? (fromBottom?j:rows-1-j) : base});
+      }
+    }
+  }else{
+    for(let j=0;j<rows;j++){
+      const row=fromBottom?rows-1-j:j, volta=wireSerp&&j%2===1;
+      for(let i=0;i<cols;i++){
+        const base=fromRight?cols-1-i:i;
+        ord.push({col: volta ? (fromRight?i:cols-1-i) : base, row});
+      }
+    }
+  }
+  return ord;
+}
+function calcWire(){
+  const card=$('wireCard'), cv=$('wireCv');
+  if(!card||!cv) return;
+  const {cols,rows,pxw,pxh}=pmeta;
+  if(!(cols>0)||!(rows>0)||pixMode!=='single'){ $('wireResults').innerHTML=''; cv.width=0; return; }
+  const pxGab=(pxw||0)*(pxh||0);
+  const limPx=parseInt($('wirePx').value)||0;
+  const limGab=parseInt($('wireMax').value)||0;
+  let porPorta = pxGab>0 && limPx>0 ? Math.floor(limPx/pxGab) : (limGab||cols*rows);
+  if(limGab>0) porPorta=Math.min(porPorta||limGab, limGab);
+  porPorta=Math.max(1, porPorta||1);
+  const total=cols*rows, portas=Math.ceil(total/porPorta);
+  const ord=wireOrder(cols,rows);
+  // resultado
+  const S=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  const dist=[]; for(let p=0;p<portas;p++) dist.push(Math.min(porPorta,total-p*porPorta));
+  $('wireResults').innerHTML=
+    S('Portas necessárias', `${fmt(portas)}<small> un</small>`,'hi full')+
+    S('Gabinetes por porta', `${fmt(porPorta)}<small> un</small>`)+
+    S('Pixels por porta', `${fmt(porPorta*pxGab)}<small> px</small>`)+
+    S('Distribuição', dist.join(' · '));
+  // mapa
+  const CW=Math.min(1400, Math.max(560, cols*90)), pad=Math.round(CW*0.025);
+  const cellW=(CW-pad*2)/cols, cellH=cellW*( (pxh/pxw) * ((+$('mh').value||1)/(+$('mw').value||1)) / ((pxh/pxw)||1) || 1);
+  const cH=Math.round(cellW*((+$('mh').value||0.5)/(+$('mw').value||0.5))), CH=cH*rows+pad*2;
+  cv.width=Math.round(CW); cv.height=Math.round(CH);
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#05101c'; ctx.fillRect(0,0,cv.width,cv.height);
+  const X=c=>pad+c*cellW, Y=r=>pad+r*cH;
+  ord.forEach((p,i)=>{
+    const cor=WIRE_COLS[Math.floor(i/porPorta)%WIRE_COLS.length];
+    ctx.fillStyle=cor+'26'; ctx.fillRect(X(p.col),Y(p.row),cellW,cH);
+    ctx.strokeStyle=cor; ctx.lineWidth=Math.max(1,cellW*0.018); ctx.strokeRect(X(p.col)+.8,Y(p.row)+.8,cellW-1.6,cH-1.6);
+  });
+  ctx.lineWidth=Math.max(2,cellW*0.045); ctx.lineCap='round'; ctx.lineJoin='round';
+  for(let i=0;i<ord.length-1;i++){
+    if(Math.floor(i/porPorta)!==Math.floor((i+1)/porPorta)) continue;      // não liga entre portas
+    const a=ord[i], b=ord[i+1];
+    ctx.strokeStyle=WIRE_COLS[Math.floor(i/porPorta)%WIRE_COLS.length];
+    ctx.beginPath(); ctx.moveTo(X(a.col)+cellW/2, Y(a.row)+cH/2); ctx.lineTo(X(b.col)+cellW/2, Y(b.row)+cH/2); ctx.stroke();
+  }
+  const rad=Math.min(cellW,cH)*0.26, fs=rad*1.15;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ord.forEach((p,i)=>{
+    const cor=WIRE_COLS[Math.floor(i/porPorta)%WIRE_COLS.length], ini=(i%porPorta===0);
+    const cx=X(p.col)+cellW/2, cy=Y(p.row)+cH/2;
+    ctx.beginPath(); ctx.arc(cx,cy,ini?rad*1.25:rad,0,Math.PI*2);
+    ctx.fillStyle=ini?cor:'#0b1220'; ctx.fill();
+    ctx.strokeStyle=cor; ctx.lineWidth=Math.max(1.5,rad*0.14); ctx.stroke();
+    ctx.fillStyle=ini?'#fff':'#e6ecf5';
+    ctx.font=`${ini?700:600} ${(ini?fs*1.05:fs).toFixed(0)}px Montserrat,Arial`;
+    ctx.fillText(ini?('P'+(Math.floor(i/porPorta)+1)):String((i%porPorta)+1), cx, cy);
+  });
+}
+$('segWireStart').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segWireStart').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); wireStart=b.dataset.s; calcWire();
+});
+$('segWireDir').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segWireDir').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); wireDir=b.dataset.d; calcWire();
+});
+$('segWireSerp').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segWireSerp').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); wireSerp=b.dataset.p==='1'; calcWire();
+});
+['wirePx','wireMax'].forEach(id=>$(id).addEventListener('input',calcWire));
+$('wireCard').addEventListener('toggle',()=>{ if($('wireCard').open) calcWire(); });
 
 // pessoa de referência: mostrar/ocultar + altura editável
 $('segPerson').querySelectorAll('button').forEach(b=>b.onclick=()=>{
@@ -2237,6 +2368,10 @@ $('segPixMode').querySelectorAll('button').forEach(b=>b.onclick=()=>{
 /* no modo Slices: título vem do nome do slice e logo/info ficam centrados em cada slice */
 function applyModeUI(){
   const sl = pixMode==='slices';
+  if($('wireCard')){                                 // cabeamento só faz sentido no canvas único
+    $('wireCard').style.display = sl?'none':'';
+    if(!sl && $('wireCard').open && typeof calcWire==='function') calcWire();
+  }
   // posição da info/logo continua ajustável nos slices — vale igual p/ todos
   $('infoXYWrap').style.display = $('infoPos').value==='custom'?'flex':'none';
   $('logoXYWrap').style.display = logoPos==='custom'?'flex':'none';
@@ -3330,6 +3465,24 @@ if('serviceWorker' in navigator){
             if(y+ih>288){ doc.addPage(); y=16; }
             y=head(doc,M,PW,y,'Composição'); y+=1;
             doc.addImage(png.data,'PNG',M,y,iw,ih); y+=ih+4;
+          }catch(e){}
+        }
+      }
+
+      // cabeamento (só se o card estiver aberto e com mapa desenhado)
+      var wc=$('wireCard'), wcv=$('wireCv');
+      if(!slices && wc && wc.open && wcv && wcv.width){
+        var wrows=[].slice.call($('wireResults').querySelectorAll('.stat')).map(function(s){
+          var k=s.querySelector('.k'), v=s.querySelector('.v');
+          return [k?k.textContent.trim():'', v?v.textContent.replace(/\s+/g,' ').trim():''];
+        }).filter(function(r){return r[0];});
+        if(wrows.length){
+          if(y>230){ doc.addPage(); y=16; }
+          y=head(doc,M,PW,y,'Cabeamento'); y=kv(doc,M,PW,y,wrows); y+=2;
+          try{
+            var wi=PW-2*M, whh=wi*(wcv.height/wcv.width);
+            if(y+whh>288){ doc.addPage(); y=16; }
+            doc.addImage(wcv.toDataURL('image/jpeg',0.92),'JPEG',M,y,wi,whh); y+=whh+4;
           }catch(e){}
         }
       }
