@@ -623,6 +623,13 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
           <label>Arquivo do logo (PNG/JPG)</label>
           <input type="file" id="logoFile" accept="image/*">
         </div>
+        <div class="field" id="logoScopeWrap" style="display:none">
+          <label>Logo na multiprojeção</label>
+          <div class="seg" id="segLogoScope">
+            <button data-l="per" class="on">Em cada projetor</button>
+            <button data-l="single">Um só, centralizado</button>
+          </div>
+        </div>
         <div class="field" id="f-logo-pos">
           <label>Posição</label>
           <select id="logoPos">
@@ -1198,6 +1205,7 @@ let sliceRef=null;                                // no modo slices/multiproj: 1
 let snapG={v:null,h:null};          // linhas-guia do snap magnético (x/y em px da imagem, null = sem snap)
 let genTarget='led';                              // quem está usando o gerador: 'led' | 'proj' (multiprojeção)
 const projOpts={grid:true,cnum:true,blend:true,outline:true,pnum:true,footer:true};   // marcações específicas da multiprojeção
+let logoScopeProj='per';                          // logo na multiproj: 'per' (em cada projetor) | 'single' (um só, centralizado)
 let outMeta={w:0,h:0,tag:''};                     // tamanho/rótulo da última imagem gerada (nome de arquivo)
 function drawTest(target, meta){
   if(!target && genTarget==='proj') return drawTestProj();        // gerador emprestado à Projeção
@@ -1293,7 +1301,7 @@ function drawTest(target, meta){
   }
   // logo
   if(isMain) logoRect=null;
-  if(tiOpts.logo){
+  if(tiOpts.logo && !M.noLogo){
     const lg=activeLogo();
     if(lg && lg.complete && lg.naturalWidth){
       const lw=W*logoSizeFrac, lh=lw*(lg.naturalHeight/lg.naturalWidth), m=Math.max(10,W*0.02);
@@ -1392,12 +1400,13 @@ function drawTestProj(){
   // grade do padrão: 12 colunas por projetor, células ~quadradas (o drawTest exige cols/rows>0)
   const gc=12, cell=g.pxW/gc, rows=Math.max(1,Math.round(g.pxH/cell));
   // o padrão é IGUAL p/ todos os projetores — desenha 1 vez e recompõe
+  const soloLogo = (logoScopeProj==='single' && tiOpts.logo);      // logo único, centralizado na imagem toda
   const o={};
   // grade e números do padrão saem daqui (viram overlay CONTÍNUO no canvas todo,
   // pra as linhas se encontrarem e a numeração ser 1..N sem reiniciar por projetor)
   const _grid=tiOpts.grid, _numbers=tiOpts.numbers;
   tiOpts.grid=false; tiOpts.numbers=false;
-  drawTest(off,{totPxW:g.pxW,totPxH:g.pxH,cols:gc,rows,pxw:g.pxW/gc,pxh:g.pxH/rows,mW:g.Wp,mH:g.Hp,__out:o});
+  drawTest(off,{totPxW:g.pxW,totPxH:g.pxH,cols:gc,rows,pxw:g.pxW/gc,pxh:g.pxH/rows,mW:g.Wp,mH:g.Hp,noLogo:soloLogo,__out:o});
   tiOpts.grid=_grid; tiOpts.numbers=_numbers;
   sliceRef={x:rects[0].x,y:rects[0].y,w:rects[0].w,h:rects[0].h};  // projetor 1 = referência do arrasto
   if(o.logo) logoRect={x:o.logo.x,y:o.logo.y,w:o.logo.w,h:o.logo.h};
@@ -1425,6 +1434,19 @@ function drawTestProj(){
     fx.globalCompositeOperation='source-over';
     ctx.drawImage(fe,r.x,r.y);
   });
+  // logo único no centro da imagem inteira (atravessa os projetores, como uma marca só na tela)
+  if(soloLogo){
+    const lg=activeLogo();
+    if(lg && lg.complete && lg.naturalWidth){
+      const lw=g.effW*logoSizeFrac, lh=lw*(lg.naturalHeight/lg.naturalWidth), m=Math.max(10,g.effW*0.02);
+      let x,y;
+      if(logoPos==='custom'){ x=+$('logoX').value||0; y=+$('logoY').value||0; }
+      else if(logoPos==='center'){ x=(g.effW-lw)/2; y=(g.effH-lh)/2; }
+      else{ x=logoPos.includes('l')?m:(g.effW-lw-m); y=logoPos.includes('t')?m:(g.effH-lh-m); }
+      ctx.drawImage(lg,x,y,lw,lh);
+      logoRect={x,y,w:lw,h:lh};                    // arrasto passa a ser sobre a imagem inteira
+    }
+  }
   drawProjOverlay(ctx,g,rects);
   outMeta={w:g.effW,h:g.effH,tag:`Multiprojecao ${g.N}x${g.M}`};
   $('tiInfo').textContent=`Multiprojeção ${g.N}×${g.M} · ${fmt(g.effW)} × ${fmt(g.effH)} px · blend ${fmt(g.bW)} px`;
@@ -1700,9 +1722,10 @@ $('segLogoSrc').querySelectorAll('button').forEach(b=>b.onclick=()=>{
 });
 // mantém o CENTRO do elemento fixo ao mudar a escala (só no modo Personalizado):
 // assim, o que está centralizado continua centralizado; o resto escala pelo próprio centro.
-function anchorScaleCustom(rect, xf, yf, oldFrac, newFrac){
+const soloLogoProj=()=> (genTarget==='proj' && logoScopeProj==='single' && tiOpts.logo);
+function anchorScaleCustom(rect, xf, yf, oldFrac, newFrac, useFull){
   if(!rect || !(oldFrac>0) || !(newFrac>0)) return;
-  const off=sliceRef||{x:0,y:0};                  // composição (slices/multiproj): relativo à 1ª região
+  const off=(useFull||!sliceRef)?{x:0,y:0}:sliceRef;   // composição: relativo à 1ª região (logo único: imagem toda)
   const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2, ratio=newFrac/oldFrac;
   const nw=rect.w*ratio, nh=rect.h*ratio;
   $(xf).value=Math.round(cx-nw/2-off.x);
@@ -1710,7 +1733,7 @@ function anchorScaleCustom(rect, xf, yf, oldFrac, newFrac){
 }
 $('logoScale').addEventListener('input',()=>{
   const nf=(+$('logoScale').value)/100;
-  if(logoPos==='custom') anchorScaleCustom(logoRect,'logoX','logoY',logoSizeFrac,nf);
+  if(logoPos==='custom') anchorScaleCustom(logoRect,'logoX','logoY',logoSizeFrac,nf,soloLogoProj());
   logoSizeFrac=nf;
   $('logoScaleVal').textContent=$('logoScale').value+'%';
   requestDraw();
@@ -1720,14 +1743,23 @@ $('logoPos').addEventListener('change',()=>{
   $('logoXYWrap').style.display = logoPos==='custom' ? 'flex' : 'none';
   drawTest();
 });
+$('segLogoScope').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('segLogoScope').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); logoScopeProj=b.dataset.l;
+  if(logoPos==='custom'){ logoPos='center'; $('logoPos').value='center'; $('logoXYWrap').style.display='none'; }  // X/Y mudam de referência
+  if(genTarget==='proj') drawTest();
+});
 ['logoX','logoY'].forEach(id=>$(id).addEventListener('input',requestDraw));
 /* arrastar o logo direto no preview (mouse e touch) */
 (function(){
   const cv=$('tiCanvas');
   // alvos arrastáveis (info em cima do logo p/ hit test); cada um sabe seu rect e seus campos
+  const full=()=>({x:0,y:0,w:cv.width,h:cv.height});
   const TARGETS=[
-    {rect:()=>infoRect, on:()=>tiOpts.info, sel:'infoPos', wrap:'infoXYWrap', xf:'infoX', yf:'infoY'},
-    {rect:()=>logoRect, on:()=>tiOpts.logo, sel:'logoPos', wrap:'logoXYWrap', xf:'logoX', yf:'logoY'},
+    {rect:()=>infoRect, on:()=>tiOpts.info, sel:'infoPos', wrap:'infoXYWrap', xf:'infoX', yf:'infoY',
+     ref:()=>sliceRef||full()},
+    {rect:()=>logoRect, on:()=>tiOpts.logo, sel:'logoPos', wrap:'logoXYWrap', xf:'logoX', yf:'logoY',
+     ref:()=>soloLogoProj()?full():(sliceRef||full())},   // logo único = coordenadas da imagem inteira
   ];
   const toImg=e=>{ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)*cv.width/r.width, y:(e.clientY-r.top)*cv.height/r.height}; };
   cv.addEventListener('pointerdown',e=>{
@@ -1736,7 +1768,7 @@ $('logoPos').addEventListener('change',()=>{
       const R=t.rect();
       if(!t.on()||!R) continue;
       if(p.x>=R.x && p.x<=R.x+R.w && p.y>=R.y && p.y<=R.y+R.h){
-        const off = sliceRef || {x:0,y:0};   // composição: X/Y relativos à 1ª região (slice/projetor)
+        const off = t.ref();                 // composição: X/Y relativos à região do alvo
         if($(t.sel).value!=='custom'){                    // vira Personalizado mantendo a posição atual
           $(t.sel).value='custom'; $(t.wrap).style.display='flex'; if(t.sel==='logoPos') logoPos='custom';
           $(t.xf).value=Math.round(R.x-off.x); $(t.yf).value=Math.round(R.y-off.y);
@@ -1752,8 +1784,8 @@ $('logoPos').addEventListener('change',()=>{
     if(!dragEl) return;
     const R=dragEl.t.rect(); if(!R) return;
     const p=toImg(e);
-    // no modo slices tudo é relativo ao 1º slice (o ajuste vale pra todos)
-    const off = sliceRef || {x:0,y:0,w:cv.width,h:cv.height};
+    // composição: relativo à 1ª região (o ajuste vale pra todas) — logo único usa a imagem inteira
+    const off = dragEl.t.ref();
     let nx=p.x-dragEl.dx-off.x, ny=p.y-dragEl.dy-off.y;
     // snap magnético: centros e bordas (margem dos presets); zona ~12px de tela
     const W=off.w||cv.width, H=off.h||cv.height, ew=R.w, eh=R.h, m=Math.max(10,W*0.02);
@@ -2056,6 +2088,7 @@ function mountGen(){
 function applyGenUI(){
   const pj = genTarget==='proj', sl = pixMode==='slices';
   $('projChipsWrap').style.display  = pj?'':'none';
+  $('logoScopeWrap').style.display  = pj?'':'none';
   $('f-ti-title').style.display     = (!pj && sl)?'none':'';
   $('sliceTitleHint').style.display = (!pj && sl)?'':'none';
   const bS=$('segGlowScope').querySelector('[data-g="slice"]'), bC=$('segGlowScope').querySelector('[data-g="canvas"]');
