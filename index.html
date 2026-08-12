@@ -258,7 +258,45 @@ details.sector-res[open] summary::before{transform:rotate(90deg)}
 .slice.collapsed .slice-body{display:none}
 .sl-mini label{display:block;font-size:10px;color:var(--mut2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
 .sl-mini input{width:100%;padding:10px;font-size:15px}
-.slice-vis{margin-top:12px;display:grid;place-items:center;padding:12px;background:var(--bg2);border-radius:12px;border:1px solid var(--line)}
+.slice-vis{margin-top:10px;padding:10px;background:var(--bg2);border-radius:12px;border:1px solid var(--line)}
+/* mapa da composição: arrastar canvas, zoom e pan (estilo Resolume) */
+/* no card o dedo continua rolando a página (a edição por toque é na tela cheia) */
+.comp-stage{position:relative;width:100%;height:270px;border-radius:9px;overflow:hidden;background:#05101c;touch-action:pan-y;cursor:default;user-select:none;-webkit-user-select:none}
+.comp-fs .comp-stage{touch-action:none}
+.comp-stage svg{display:block;width:100%;height:100%}
+.comp-stage.grab{cursor:grab}
+.comp-stage.grabbing{cursor:grabbing}
+.comp-stage.moving{cursor:move}
+.comp-top{display:flex;align-items:center;gap:6px;margin-top:12px}
+.comp-top .comp-t{flex:1;min-width:0;font-size:10px;color:var(--mut2);text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.comp-ic{width:30px;height:30px;flex:0 0 auto;display:grid;place-items:center;border-radius:8px;background:var(--card);border:1px solid var(--line);color:var(--mut);cursor:pointer;font-size:14px;line-height:1;transition:.15s;padding:0}
+.comp-ic:hover{color:var(--txt);border-color:var(--acc)}
+.comp-zl{font-size:11px;color:var(--acc2);font-weight:700;min-width:40px;text-align:center;flex:0 0 auto}
+/* tela cheia */
+.comp-fs{position:fixed;inset:0;z-index:7000;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0)}
+.comp-fs[hidden]{display:none}
+.comp-bar{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--card);flex:0 0 auto}
+.comp-bar b{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.comp-wrap{flex:1;min-height:0;display:flex}
+.comp-fs-host{flex:1;min-width:0;padding:10px}
+.comp-fs-host .comp-stage{height:100%}
+.comp-side{width:238px;flex:0 0 auto;border-left:1px solid var(--line);background:var(--card);overflow:auto;padding:10px}
+.cs-it{border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px;background:var(--bg2);cursor:pointer}
+.cs-it.on{border-color:var(--acc2)}
+.cs-h{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;margin-bottom:6px}
+.cs-dot{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+.cs-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cs-r{display:flex;gap:6px}
+.cs-r label{flex:1;min-width:0;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:.4px}
+.cs-r input{width:100%;padding:7px;font-size:13px;margin-top:2px}
+.comp-help{padding:7px 12px calc(7px + var(--safe-bot));font-size:11px;color:var(--mut2);border-top:1px solid var(--line);background:var(--card);text-align:center;flex:0 0 auto}
+.comp-help b{color:var(--mut)}
+@media(max-width:760px){
+  .comp-wrap{flex-direction:column}
+  .comp-side{width:auto;border-left:0;border-top:1px solid var(--line);max-height:32vh}
+  .comp-stage{height:230px}
+}
+body.comp-open{overflow:hidden}
 /* Iluminação · DMX */
 .fx{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--card)}
 .fx .fx-name{width:100%;margin-bottom:8px;font-size:14px}
@@ -511,7 +549,17 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
 
     <div class="card">
       <h3>Composição</h3>
-      <div class="slice-vis"><svg id="sliceSvg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Canvas total com os canvas posicionados"></svg></div>
+      <div class="comp-top">
+        <span class="comp-t">Mapa da composição</span>
+        <button class="comp-ic" id="compZo" title="Diminuir zoom" aria-label="Diminuir zoom">−</button>
+        <span class="comp-zl" id="compZlbl">100%</span>
+        <button class="comp-ic" id="compZi" title="Aumentar zoom" aria-label="Aumentar zoom">+</button>
+        <button class="comp-ic" id="compFitB" title="Ajustar à tela" aria-label="Ajustar à tela">⤢</button>
+        <button class="comp-ic" id="compFsB" title="Tela cheia" aria-label="Abrir em tela cheia">⛶</button>
+      </div>
+      <div class="slice-vis" id="compHost">
+        <div class="comp-stage" id="compStage"><svg id="sliceSvg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Canvas total com os canvas posicionados"></svg></div>
+      </div>
       <div class="hint" id="sliceHint"></div>
     </div>
 
@@ -1126,6 +1174,23 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
   </div>
 
   <div class="scrim" id="scrim"></div>
+</div>
+
+<!-- Composição em tela cheia (arrastar canvas, zoom e pan) -->
+<div class="comp-fs" id="compFs" hidden>
+  <div class="comp-bar">
+    <b>Composição</b>
+    <button class="comp-ic" id="compZo2" title="Diminuir zoom" aria-label="Diminuir zoom">−</button>
+    <span class="comp-zl" id="compZlbl2">100%</span>
+    <button class="comp-ic" id="compZi2" title="Aumentar zoom" aria-label="Aumentar zoom">+</button>
+    <button class="comp-ic" id="compFitB2" title="Ajustar à tela" aria-label="Ajustar à tela">⤢</button>
+    <button class="comp-ic" id="compClose" title="Fechar (Esc)" aria-label="Fechar tela cheia">✕</button>
+  </div>
+  <div class="comp-wrap">
+    <div class="comp-fs-host" id="compHostFs"></div>
+    <aside class="comp-side" id="compSide"></aside>
+  </div>
+  <div class="comp-help">Arraste os canvas · <b>Espaço + arrastar</b> (ou arrastar o fundo) move a tela · scroll / pinça dá zoom</div>
 </div>
 
 <script src="equipment.js"></script>
@@ -2184,33 +2249,285 @@ function calcSlices(){
   if(pixMode==='slices'){ stopAnim(); drawTest(); startAnim(); }   // atualiza baseCv (composição) antes do mapa
   drawSliceMap(list,cw,ch);
 }
-function drawSliceMap(list,cw,ch){
-  const svg=$('sliceSvg'); if(!svg) return;
-  if(!(cw>0)||!(ch>0)){ svg.innerHTML=''; $('sliceHint').textContent='Defina o canvas total.'; return; }
-  const W=520, H=Math.max(90,Math.round(W*ch/cw));
-  const k=W/cw, fx=n=>(+n).toFixed(1);
-  const thumb=panelThumb();   // imagem de teste composta (o pixel map de verdade)
-  let body=`<rect x="0" y="0" width="${W}" height="${H}" rx="4" fill="#05101c" stroke="#26325a"/>`;
-  if(thumb) body+=`<image x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none" href="${thumb}"/>`;
-  let fora=0;
-  const halo='stroke="#05101c" stroke-width="2.5" paint-order="stroke"';
-  list.forEach((s,i)=>{
-    if(!s.gab) return;
-    const x=s.x*k, y=s.y*k, w=s.pxW*k, h=s.pxH*k;
-    if(s.x<0||s.y<0||s.x+s.pxW>cw||s.y+s.pxH>ch) fora++;
-    const c=['#3d7bff','#22d3ee','#22c55e','#f59e0b','#a855f7','#ef4444'][i%6];
-    // com o conteúdo de fundo, o retângulo vira só contorno; sem imagem, mantém o preenchimento
-    body+=`<rect x="${fx(x)}" y="${fx(y)}" width="${fx(w)}" height="${fx(h)}" rx="2" fill="${c}" fill-opacity="${thumb?0:.18}" stroke="${c}" stroke-width="1.5"/>`;
-    if(w>52&&h>26) body+=`<text x="${fx(x+w/2)}" y="${fx(y+13)}" fill="#fff" font-size="10" font-weight="700" text-anchor="middle" ${halo}>${s.name}</text>`
-      +`<text x="${fx(x+w/2)}" y="${fx(y+23)}" fill="#cdd6ef" font-size="8.5" text-anchor="middle" ${halo}>${fmt(s.pxW)}×${fmt(s.pxH)} · X${fmt(s.x)} Y${fmt(s.y)}</text>`;
-  });
-  svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W); svg.setAttribute('height',H);
-  svg.style.maxWidth='100%'; svg.style.height='auto';
-  svg.innerHTML=body;
-  $('sliceHint').innerHTML = fora
-    ? `⚠️ ${fora} canvas fora do canvas total — ajuste a posição ou o tamanho do canvas total.`
-    : `Posicione pelo X/Y de cada canvas — é o mesmo patch que você usa na processadora.`;
+/* ═══ Composição interativa ═══════════════════════════════════════════
+   O mapa usa o próprio sistema de coordenadas do canvas total (px reais),
+   e o zoom/pan é só o viewBox do SVG — por isso arrastar continua exato
+   em qualquer nível de zoom. Atalhos no estilo Resolume/Photoshop:
+     · arrastar um canvas  → move (com ímã nas bordas, centros e vizinhos)
+     · Espaço + arrastar   → move a tela toda (mão)
+     · scroll / pinça      → zoom no ponto do cursor                      */
+const CMAPC=['#3d7bff','#22d3ee','#22c55e','#f59e0b','#a855f7','#ef4444'];
+const cmap={ view:null, base:1, list:[], cw:0, ch:0, drag:null, pan:null,
+             space:false, hover:false, sel:-1, guide:{v:null,h:null}, fit:true,
+             pts:new Map(), pinch:null };
+const sesc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function cmapBox(){
+  const st=$('compStage'); if(!st) return {w:520,h:270,left:0,top:0};
+  const r=st.getBoundingClientRect();
+  return {w:Math.max(40,r.width), h:Math.max(40,r.height), left:r.left, top:r.top};
 }
+const cmapK=()=>cmap.view ? cmapBox().w/cmap.view.w : 1;   // px de tela por px de canvas
+function cmapFit(){
+  const b=cmapBox(), cw=cmap.cw||1920, ch=cmap.ch||1080, ar=b.w/b.h;
+  let vw=cw*1.1, vh=vw/ar;
+  if(vh<ch*1.1){ vh=ch*1.1; vw=vh*ar; }
+  cmap.view={x:cw/2-vw/2, y:ch/2-vh/2, w:vw, h:vh};
+  cmap.base=vw; cmap.fit=true;
+}
+/* corpo do mapa — k = px de tela por px de canvas, pra espessuras e textos
+   ficarem sempre do mesmo tamanho na tela, independente do zoom */
+function cmapBody(k,o){
+  o=o||{};
+  const cw=cmap.cw, ch=cmap.ch, u=n=>n/k, fx=n=>(+n).toFixed(1);
+  const thumb=panelThumb();   // imagem de teste composta (o pixel map de verdade)
+  let s=`<rect x="0" y="0" width="${cw}" height="${ch}" rx="${u(4)}" fill="#05101c" stroke="#26325a" stroke-width="${u(1)}"/>`;
+  if(thumb) s+=`<image x="0" y="0" width="${cw}" height="${ch}" preserveAspectRatio="none" href="${thumb}"/>`;
+  const halo=`stroke="#05101c" stroke-width="${u(2.5)}" paint-order="stroke"`;
+  cmap.list.forEach((sl,i)=>{
+    if(!sl.gab) return;
+    const c=CMAPC[i%6], on=(o.sel===i), wS=sl.pxW*k, hS=sl.pxH*k;
+    // com o conteúdo de fundo, o retângulo vira só contorno; sem imagem, mantém o preenchimento
+    s+=`<rect x="${fx(sl.x)}" y="${fx(sl.y)}" width="${fx(sl.pxW)}" height="${fx(sl.pxH)}" rx="${u(2)}" fill="${c}" fill-opacity="${thumb?(on?.12:0):.18}" stroke="${c}" stroke-width="${u(on?2.6:1.5)}"/>`;
+    if(wS>52&&hS>26)
+      s+=`<text x="${fx(sl.x+sl.pxW/2)}" y="${fx(sl.y+u(13))}" fill="#fff" font-size="${u(10)}" font-weight="700" text-anchor="middle" ${halo}>${sesc(sl.name)}</text>`
+       + `<text x="${fx(sl.x+sl.pxW/2)}" y="${fx(sl.y+u(23))}" fill="#cdd6ef" font-size="${u(8.5)}" text-anchor="middle" ${halo}>${fmt(sl.pxW)}×${fmt(sl.pxH)} · X${fmt(sl.x)} Y${fmt(sl.y)}</text>`;
+  });
+  if(o.guides && cmap.view){
+    const g=cmap.guide, v=cmap.view, d=`${u(6)},${u(4)}`;
+    if(g.v!=null) s+=`<line x1="${fx(g.v)}" y1="${fx(v.y)}" x2="${fx(g.v)}" y2="${fx(v.y+v.h)}" stroke="#22d3ee" stroke-width="${u(1.2)}" stroke-dasharray="${d}"/>`;
+    if(g.h!=null) s+=`<line x1="${fx(v.x)}" y1="${fx(g.h)}" x2="${fx(v.x+v.w)}" y2="${fx(g.h)}" stroke="#22d3ee" stroke-width="${u(1.2)}" stroke-dasharray="${d}"/>`;
+  }
+  return s;
+}
+function cmapRender(){
+  const svg=$('sliceSvg'); if(!svg||!cmap.view) return;
+  const v=cmap.view, b=cmapBox();
+  const nh=v.w*(b.h/b.w);                       // mantém a proporção da área visível
+  if(Math.abs(nh-v.h)>0.01){ v.y+=(v.h-nh)/2; v.h=nh; }
+  svg.removeAttribute('width'); svg.removeAttribute('height');
+  svg.style.maxWidth=''; svg.style.height='';
+  svg.setAttribute('viewBox',`${v.x} ${v.y} ${v.w} ${v.h}`);
+  svg.innerHTML=cmapBody(cmapBox().w/v.w,{guides:true,sel:cmap.sel});
+  const pct=Math.round(cmap.base/v.w*100)+'%';
+  ['compZlbl','compZlbl2'].forEach(id=>{ const e=$(id); if(e) e.textContent=pct; });
+  cmapHint(); cmapSide(false);
+}
+function cmapHint(){
+  const h=$('sliceHint'); if(!h) return;
+  const fora=cmap.list.filter(s=>s.gab&&(s.x<0||s.y<0||s.x+s.pxW>cmap.cw||s.y+s.pxH>cmap.ch)).length;
+  h.innerHTML = fora
+    ? `⚠️ ${fora} canvas fora do canvas total — ajuste a posição ou o tamanho do canvas total.`
+    : `Arraste os canvas no mapa ou use o X/Y — é o mesmo patch que você usa na processadora. Toque em <b>⛶</b> para editar em tela cheia.`;
+}
+function drawSliceMap(list,cw,ch){
+  cmap.list=list||[]; cmap.cw=cw; cmap.ch=ch;
+  const svg=$('sliceSvg'); if(!svg) return;
+  if(!(cw>0)||!(ch>0)){ svg.innerHTML=''; cmap.view=null; $('sliceHint').textContent='Defina o canvas total.'; return; }
+  if(!cmap.view||cmap.fit) cmapFit();
+  cmapRender();
+}
+/* SVG solto, sempre enquadrado — o PDF não deve sair com o zoom da tela */
+function cmapExportSvg(){
+  if(!(cmap.cw>0)||!(cmap.ch>0)||!cmap.list.length) return null;
+  const W=520, H=Math.max(90,Math.round(W*cmap.ch/cmap.cw));
+  const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  s.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  s.setAttribute('viewBox',`0 0 ${cmap.cw} ${cmap.ch}`);
+  s.setAttribute('width',W); s.setAttribute('height',H);
+  s.innerHTML=cmapBody(W/cmap.cw,{guides:false,sel:-1});
+  return s;
+}
+/* ── posição/zoom ─────────────────────────────────────────────────── */
+function cmapPt(e){
+  const b=cmapBox(), v=cmap.view;
+  return { x:v.x+(e.clientX-b.left)/b.w*v.w, y:v.y+(e.clientY-b.top)/b.h*v.h };
+}
+function cmapHit(p){
+  for(let i=cmap.list.length-1;i>=0;i--){
+    const s=cmap.list[i]; if(!s.gab) continue;
+    if(p.x>=s.x&&p.x<=s.x+s.pxW&&p.y>=s.y&&p.y<=s.y+s.pxH) return i;
+  }
+  return -1;
+}
+/* ímã: bordas e centro do canvas total + bordas e centro dos vizinhos */
+function cmapSnap(i,nx,ny){
+  const s=cmap.list[i], tol=10/cmapK(), cw=cmap.cw, ch=cmap.ch;
+  const vT=[0,cw/2,cw], hT=[0,ch/2,ch];
+  cmap.list.forEach((o,j)=>{ if(j===i||!o.gab) return;
+    vT.push(o.x,o.x+o.pxW/2,o.x+o.pxW); hT.push(o.y,o.y+o.pxH/2,o.y+o.pxH); });
+  let bx=null,by=null;
+  [0,s.pxW/2,s.pxW].forEach(off=>vT.forEach(t=>{
+    const d=Math.abs(nx+off-t); if(d<=tol&&(!bx||d<bx.d)) bx={d,p:t-off,g:t}; }));
+  [0,s.pxH/2,s.pxH].forEach(off=>hT.forEach(t=>{
+    const d=Math.abs(ny+off-t); if(d<=tol&&(!by||d<by.d)) by={d,p:t-off,g:t}; }));
+  cmap.guide={v:bx?bx.g:null, h:by?by.g:null};
+  return { x:Math.round(bx?bx.p:nx), y:Math.round(by?by.p:ny) };
+}
+function cmapZoomAt(f,sx,sy){
+  if(!cmap.view) return;
+  const v=cmap.view, b=cmapBox();
+  const px=(sx-b.left)/b.w, py=(sy-b.top)/b.h;
+  const ax=v.x+px*v.w, ay=v.y+py*v.h;
+  const nw=Math.min(cmap.base*12, Math.max(cmap.base/70, v.w/f)), nh=nw*(v.h/v.w);
+  cmap.view={x:ax-px*nw, y:ay-py*nh, w:nw, h:nh};
+  cmap.fit=false; cmapRender();
+}
+function cmapZoomC(f){ const b=cmapBox(); cmapZoomAt(f, b.left+b.w/2, b.top+b.h/2); }
+/* ── painel lateral (tela cheia) ──────────────────────────────────── */
+function cmapSide(force){
+  const box=$('compSide'); if(!box||$('compFs').hidden) return;
+  const items=cmap.list, inSide=box.contains(document.activeElement);
+  if((force&&!inSide) || box.dataset.n!==String(items.length)){
+    box.dataset.n=String(items.length);
+    box.innerHTML = items.length ? items.map((s,i)=>`
+      <div class="cs-it${cmap.sel===i?' on':''}" data-i="${i}">
+        <div class="cs-h"><span class="cs-dot" style="background:${CMAPC[i%6]}"></span><span class="cs-n">${sesc(s.name)}</span></div>
+        <div class="cs-r">
+          <label>X<input class="cs-x" type="text" inputmode="numeric" value="${s.x}"></label>
+          <label>Y<input class="cs-y" type="text" inputmode="numeric" value="${s.y}"></label>
+        </div>
+      </div>`).join('') : '<div class="hint">Nenhum canvas criado ainda.</div>';
+    return;
+  }
+  [...box.querySelectorAll('.cs-it')].forEach((el,i)=>{
+    const s=items[i]; if(!s) return;
+    const n=el.querySelector('.cs-n'); if(n&&n.textContent!==s.name) n.textContent=s.name;
+    const xi=el.querySelector('.cs-x'), yi=el.querySelector('.cs-y');
+    if(xi&&document.activeElement!==xi) xi.value=s.x;
+    if(yi&&document.activeElement!==yi) yi.value=s.y;
+    el.classList.toggle('on', cmap.sel===i);
+  });
+}
+function cmapFs(on){
+  const fs=$('compFs'), st=$('compStage'); if(!fs||!st) return;
+  fs.hidden=!on;
+  document.body.classList.toggle('comp-open',on);
+  (on?$('compHostFs'):$('compHost')).appendChild(st);
+  if(!on){ cmap.space=false; st.classList.remove('grab','grabbing','moving'); }
+  // aplica na hora e reforça depois: rAF não dispara com a aba em segundo plano
+  const aplica=()=>{ if(cmap.view){ cmapFit(); cmapRender(); } cmapSide(true); };
+  aplica(); requestAnimationFrame(aplica); setTimeout(aplica,60);
+}
+/* ── eventos ──────────────────────────────────────────────────────── */
+(function initCmap(){
+  const st=$('compStage'); if(!st) return;
+  st.addEventListener('pointerenter',()=>cmap.hover=true);
+  st.addEventListener('pointerleave',()=>cmap.hover=false);
+  const naFs=()=>!$('compFs').hidden;
+  st.addEventListener('pointerdown',e=>{
+    if(!cmap.view) return;
+    if(e.pointerType==='touch'&&!naFs()) return;   // no card, o toque rola a página
+    cmap.pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    try{ st.setPointerCapture(e.pointerId); }catch(_){}
+    if(cmap.pts.size===2){                                  // pinça: cancela o que estava rolando
+      cmap.drag=null; cmap.pan=null; cmap.guide={v:null,h:null};
+      const [a,b]=[...cmap.pts.values()];
+      cmap.pinch={d:Math.hypot(a.x-b.x,a.y-b.y)};
+      st.classList.remove('moving','grabbing'); cmapRender(); return;
+    }
+    if(cmap.pts.size>2) return;
+    e.preventDefault();
+    const mao=cmap.space||e.button===1||e.shiftKey;          // espaço/botão do meio = mão
+    const i=mao?-1:cmapHit(cmapPt(e));
+    if(i>=0){
+      const p=cmapPt(e);
+      cmap.sel=i; cmap.drag={i, dx:p.x-cmap.list[i].x, dy:p.y-cmap.list[i].y};
+      st.classList.add('moving');
+    }else{
+      if(!mao) cmap.sel=-1;
+      cmap.pan={sx:e.clientX, sy:e.clientY, vx:cmap.view.x, vy:cmap.view.y};
+      st.classList.add('grabbing');
+    }
+    cmapRender();
+  });
+  st.addEventListener('pointermove',e=>{
+    if(!cmap.view) return;
+    if(cmap.pts.has(e.pointerId)) cmap.pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(cmap.pinch&&cmap.pts.size>=2){
+      const [a,b]=[...cmap.pts.values()], d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(cmap.pinch.d>4&&d>4) cmapZoomAt(d/cmap.pinch.d,(a.x+b.x)/2,(a.y+b.y)/2);
+      cmap.pinch={d}; return;
+    }
+    if(cmap.drag){
+      const p=cmapPt(e), s=cmap.list[cmap.drag.i];
+      const pos=cmapSnap(cmap.drag.i, p.x-cmap.drag.dx, p.y-cmap.drag.dy);
+      s.x=pos.x; s.y=pos.y;
+      s.el.querySelector('.sl-x').value=pos.x;
+      s.el.querySelector('.sl-y').value=pos.y;
+      cmapRender(); return;                    // durante o arrasto só redesenha o mapa
+    }
+    if(cmap.pan){
+      const b=cmapBox(), v=cmap.view;
+      v.x=cmap.pan.vx-(e.clientX-cmap.pan.sx)/b.w*v.w;
+      v.y=cmap.pan.vy-(e.clientY-cmap.pan.sy)/b.h*v.h;
+      cmap.fit=false; cmapRender();
+    }
+  });
+  const fim=e=>{
+    cmap.pts.delete(e.pointerId);
+    if(cmap.pts.size<2) cmap.pinch=null;
+    const era=cmap.drag;
+    cmap.drag=null; cmap.pan=null; cmap.guide={v:null,h:null};
+    st.classList.remove('moving','grabbing');
+    if(cmap.space) st.classList.add('grab');
+    if(era){ calcSlices(); cmapSide(true); }   // só ao soltar recalcula tudo
+    else cmapRender();
+  };
+  st.addEventListener('pointerup',fim);
+  st.addEventListener('pointercancel',fim);
+  st.addEventListener('wheel',e=>{
+    if(!cmap.view) return;
+    // no card só dá zoom com Ctrl/⌘ (ou pinça do trackpad) — senão a página rola normal
+    if(!naFs()&&!e.ctrlKey&&!e.metaKey) return;
+    e.preventDefault();
+    cmapZoomAt(e.deltaY<0?1.15:1/1.15, e.clientX, e.clientY);
+  },{passive:false});
+  st.addEventListener('dblclick',()=>{ cmapFit(); cmapRender(); });
+
+  // Espaço segurado = mão (só quando o mapa está em foco e fora de campos de texto)
+  const ativo=()=>!$('compFs').hidden||cmap.hover;
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&!$('compFs').hidden){ cmapFs(false); return; }
+    if(e.code!=='Space'||!ativo()) return;
+    const t=e.target, tag=(t&&t.tagName)||'';
+    if(/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(tag)||(t&&t.isContentEditable)) return;
+    e.preventDefault();
+    if(!cmap.space){ cmap.space=true; if(!cmap.drag) st.classList.add('grab'); }
+  });
+  document.addEventListener('keyup',e=>{
+    if(e.code==='Space'){ cmap.space=false; st.classList.remove('grab'); }
+  });
+  window.addEventListener('blur',()=>{ cmap.space=false; st.classList.remove('grab'); });
+
+  const zoomBtn=(id,f)=>{ const b=$(id); if(b) b.onclick=()=>cmapZoomC(f); };
+  zoomBtn('compZi',1.3); zoomBtn('compZo',1/1.3);
+  zoomBtn('compZi2',1.3); zoomBtn('compZo2',1/1.3);
+  ['compFitB','compFitB2'].forEach(id=>{ const b=$(id); if(b) b.onclick=()=>{ if(cmap.view){ cmapFit(); cmapRender(); } }; });
+  const fsB=$('compFsB'); if(fsB) fsB.onclick=()=>cmapFs(true);
+  const cl=$('compClose'); if(cl) cl.onclick=()=>cmapFs(false);
+
+  const side=$('compSide');
+  if(side){
+    side.addEventListener('pointerdown',e=>{
+      const it=e.target.closest('.cs-it'); if(!it) return;
+      cmap.sel=+it.dataset.i; cmapRender(); cmapSide(false);
+    });
+    side.addEventListener('input',e=>{
+      const it=e.target.closest('.cs-it'); if(!it) return;
+      const s=cmap.list[+it.dataset.i]; if(!s) return;
+      if(e.target.classList.contains('cs-x')) s.el.querySelector('.sl-x').value=parseInt(e.target.value)||0;
+      if(e.target.classList.contains('cs-y')) s.el.querySelector('.sl-y').value=parseInt(e.target.value)||0;
+      calcSlices();
+    });
+  }
+  // a área muda de tamanho ao abrir a aba, girar o celular ou entrar em tela cheia
+  if(window.ResizeObserver) new ResizeObserver(()=>{
+    if(!cmap.view) return;
+    if(cmap.fit) cmapFit();
+    cmapRender();
+  }).observe(st);
+})();
 $('addSlice').onclick=()=>{ $('sliceList').appendChild(sliceItem()); calcSlices(); };
 ['cvW','cvH'].forEach(id=>$(id).addEventListener('input',calcSlices));
 $('cvAuto').onclick=()=>{
@@ -3322,7 +3639,7 @@ if('serviceWorker' in navigator){
 
       // composição (só no modo Múltiplos canvas)
       if(slices){
-        var svg=$('sliceSvg');
+        var svg=(typeof cmapExportSvg==='function') ? cmapExportSvg() : $('sliceSvg');
         if(svg && svg.querySelector('rect')){
           try{
             var png=await svgToPng(svg);
