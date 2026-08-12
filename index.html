@@ -224,6 +224,28 @@ details.sector-res[open] summary::before{transform:rotate(90deg)}
 .sector-summary{display:none;font-size:12px;color:var(--acc2);font-weight:700}
 .sector.collapsed .sector-summary{display:inline}
 .sector.collapsed .sector-body{display:none}
+/* Home */
+.home-hero{margin:2px 0 22px}
+.home-when{font-size:12px;color:var(--mut2);letter-spacing:.4px}
+.home-hi{font-size:26px;font-weight:700;color:var(--txt);margin:6px 0 2px;line-height:1.2}
+.home-ask{font-size:15px;color:var(--mut);margin:0}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.home-card{
+  display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;
+  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 15px;
+  color:var(--txt);cursor:pointer;transition:.15s;
+}
+.home-card:hover{border-color:var(--acc);background:var(--card2);transform:translateY(-2px)}
+.home-card svg{width:26px;height:26px;stroke:var(--acc2);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-bottom:8px}
+.home-card b{font-size:15px;font-weight:700}
+.home-card small{font-size:12px;color:var(--mut);line-height:1.45}
+.home-links{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+.home-links a{
+  display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--mut);
+  text-decoration:none;border:1px solid var(--line);background:var(--bg2);border-radius:11px;padding:9px 13px;transition:.15s;
+}
+.home-links a:hover{color:var(--txt);border-color:var(--acc)}
+.home-links svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 /* Pixel Map · Slices */
 .slice{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--bg2)}
 .slice-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
@@ -328,7 +350,8 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <img class="logo-mark-img" src="logo-mark.png" alt="Projetech">
     </div>
     <nav class="side-nav">
-      <button class="on" data-scr="pixel"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg><span>Pixel Map</span></button>
+      <button class="on" data-scr="home"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5M9.5 20v-6h5v6"/></svg><span>Home</span></button>
+      <button data-scr="pixel"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg><span>Pixel Map</span></button>
       <button data-scr="power"><svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11l-1 8.5 8.5-11.5H12z"/></svg><span>Elétrica</span></button>
       <button data-scr="proj"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="14" height="10" rx="2"/><circle cx="9" cy="12" r="2.4"/><path d="M16 10l5-2v8l-5-2"/></svg><span>Projeção</span></button>
       <button data-scr="audio"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg><span>Áudio</span></button>
@@ -350,8 +373,49 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     </div>
 
 <main>
+  <!-- ============ HOME ============ -->
+  <section class="screen active" id="scr-home">
+    <div class="home-hero">
+      <div class="home-when" id="homeWhen"></div>
+      <h2 class="home-hi" id="homeHi">Bem-vindo</h2>
+      <p class="home-ask">O que vamos calcular hoje?</p>
+    </div>
+    <div class="home-grid">
+      <button class="home-card" data-go="pixel">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+        <b>Pixel Map</b><small>Painel de LED, imagem de teste e cases</small>
+      </button>
+      <button class="home-card" data-go="power">
+        <svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11l-1 8.5 8.5-11.5H12z"/></svg>
+        <b>Elétrica</b><small>Corrente, disjuntor, cabo e queda de tensão</small>
+      </button>
+      <button class="home-card" data-go="proj">
+        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="14" height="10" rx="2"/><circle cx="9" cy="12" r="2.4"/><path d="M16 10l5-2v8l-5-2"/></svg>
+        <b>Projeção</b><small>Distância, tela, blending e multiprojeção</small>
+      </button>
+      <button class="home-card" data-go="audio">
+        <svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg>
+        <b>Áudio</b><small>Delay de torres, SPL e cobertura</small>
+      </button>
+      <button class="home-card" data-go="light">
+        <svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>
+        <b>Iluminação</b><small>Endereçamento DMX por lista</small>
+      </button>
+    </div>
+    <div class="home-links">
+      <a href="https://www.instagram.com/projetech/" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+        Instagram
+      </a>
+      <a href="https://www.projetech.com.br/" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.7 4 5.8 4 9s-1.4 6.3-4 9c-2.6-2.7-4-5.8-4-9s1.4-6.3 4-9z"/></svg>
+        projetech.com.br
+      </a>
+    </div>
+  </section>
+
   <!-- ============ PIXEL MAP ============ -->
-  <section class="screen active" id="scr-pixel">
+  <section class="screen" id="scr-pixel">
     <div class="screen-title">Pixel Map · LED</div>
     <p class="screen-sub">Calcule resolução, dimensão e pitch do painel</p>
 
@@ -2963,6 +3027,23 @@ if('serviceWorker' in navigator){
     PTVisit.logVisit(false);   // conta a entrada (respeitando o intervalo anti-refresh)
     PTVisit.flush();           // sobe o que ficou pendente offline
   }
+  /* Home: saudação pelo horário + data e relógio ao vivo */
+  var primeiro = (id && id.nome) ? String(id.nome).trim().split(/\s+/)[0] : '';
+  function tick(){
+    var d=new Date(), h=d.getHours();
+    var ola = h<12 ? 'Bom dia' : (h<18 ? 'Boa tarde' : 'Boa noite');
+    var hi=document.getElementById('homeHi'), when=document.getElementById('homeWhen');
+    if(hi) hi.textContent = primeiro ? (ola+', '+primeiro) : ola;
+    if(when){
+      var dt=d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+      dt=dt.charAt(0).toUpperCase()+dt.slice(1);        // só a 1ª letra (senão vira "12 De Agosto De")
+      when.textContent = dt + ' · ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    }
+  }
+  tick(); setInterval(tick,20000);
+  document.querySelectorAll('.home-card').forEach(function(b){
+    b.onclick=function(){ var t=document.querySelector('.side-nav button[data-scr="'+b.dataset.go+'"]'); if(t) t.click(); };
+  });
 })();
 </script>
 
