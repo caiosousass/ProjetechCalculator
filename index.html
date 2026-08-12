@@ -1482,10 +1482,9 @@ function drawProjOverlay(ctx,g,rects){
   const nCols=Math.max(1,Math.round(W/base)), cellW=W/nCols;
   const nRows=Math.max(1,Math.round(H/base)), cellH=H/nRows;
   const footH=projOpts.footer?Math.max(30,g.pxH*0.06):0;
-  // faixa dos números: desce se a borda estiver ligada (senão a borda cobre os círculos)
-  const bwEdge=tiOpts.border?Math.max(1,borderPx):0;
+  const bwEdge=0;
   const numRad=Math.max(11,cellW*0.20);
-  const yNumTop=bwEdge+numRad+S*3, yNumBot=H-footH-bwEdge-numRad-S*3;
+  const yNumTop=numRad+S*3, yNumBot=H-footH-numRad-S*3;
   const topFree=projOpts.cnum ? yNumTop+numRad+S*4 : bwEdge+S*2;   // 1ª altura livre abaixo dos números
   // grade contínua — verticais e horizontais se encontram em todo o canvas
   if(projOpts.grid){
