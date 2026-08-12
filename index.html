@@ -1211,9 +1211,13 @@ const genPrefs={
   led:null,                                        // capturado do estado atual na 1ª troca
   proj:{bg:'solid', c1:'#000000', c2:'#000000',
         opts:{grid:true,numbers:true,circle:true,diag:false,info:true,logo:true,border:false},
-        pOpts:{grid:true,cnum:true,blend:true,outline:true,pnum:false,footer:false}}
+        pOpts:{grid:true,cnum:true,blend:true,outline:true,pnum:false,footer:false},
+        // posição da info guardada em FRAÇÃO do canvas (segue a resolução, não quebra ao mudar projetores)
+        infoPos:'custom', infoFrac:{x:1552/3456, y:903/1200}, infoSize:0.043,
+        logoScope:'single', logoPos:'center', logoSize:0.50}
 };
 let outMeta={w:0,h:0,tag:''};                     // tamanho/rótulo da última imagem gerada (nome de arquivo)
+let lastProjW=0, lastProjH=0;                     // p/ manter info/logo no mesmo ponto relativo ao mudar a resolução
 /* bloco de info (título · resolução · medida em m) — usado pelo padrão e pela multiprojeção */
 function paintInfo(ctx,W,H,o){
   o=o||{};
@@ -1353,7 +1357,13 @@ function drawTest(target, meta){
 }
 /* redesenho suave: junta várias mudanças seguidas num único frame (cor/slider ficam instantâneos) */
 let drawReq=null;
-function requestDraw(){ if(drawReq) return; drawReq=requestAnimationFrame(()=>{ drawReq=null; drawTest(); }); }
+function requestDraw(){
+  if(drawReq) return;
+  const run=()=>{ if(!drawReq) return; cancelAnimationFrame(drawReq.r); clearTimeout(drawReq.t); drawReq=null; drawTest(); };
+  // rAF normalmente; timeout de segurança porque em aba oculta o rAF não dispara e o app
+  // travaria sem redesenhar (drawReq ficava preso e engolia todos os pedidos seguintes)
+  drawReq={r:requestAnimationFrame(run), t:setTimeout(run,120)};
+}
 /* modo Slices: desenha o padrão de teste de cada slice na sua posição dentro do canvas total */
 function drawTestSlices(){
   const cv=$('tiCanvas'); if(!cv) return;
@@ -1403,6 +1413,13 @@ function drawTestProj(){
     $('tiInfo').textContent=`Imagem grande demais (${fmt(g.effW)} × ${fmt(g.effH)} px) — reduza a resolução ou a quantidade de projetores.`;
     cv.width=0; return;
   }
+  // mudou a resolução (mais/menos projetores)? info e logo em X/Y seguem o mesmo ponto relativo
+  if(lastProjW>0 && lastProjH>0 && (lastProjW!==g.effW || lastProjH!==g.effH)){
+    const sx=g.effW/lastProjW, sy=g.effH/lastProjH;
+    if($('infoPos').value==='custom'){ $('infoX').value=Math.round((+$('infoX').value||0)*sx); $('infoY').value=Math.round((+$('infoY').value||0)*sy); }
+    if(logoPos==='custom'){ $('logoX').value=Math.round((+$('logoX').value||0)*sx); $('logoY').value=Math.round((+$('logoY').value||0)*sy); }
+  }
+  lastProjW=g.effW; lastProjH=g.effH;
   cv.width=g.effW; cv.height=g.effH;
   const ctx=cv.getContext('2d');
   ctx.fillStyle='#000'; ctx.fillRect(0,0,g.effW,g.effH);
@@ -2115,7 +2132,14 @@ function snapGen(k){                               // fotografa o visual atual n
   const p=genPrefs[k]||(genPrefs[k]={});
   p.bg=curBg; p.c1=$('tiColor').value; p.c2=$('tiColor2').value;
   p.opts=Object.assign({},tiOpts);
-  if(k==='proj') p.pOpts=Object.assign({},projOpts);
+  p.infoPos=$('infoPos').value; p.infoSize=infoSize;
+  p.logoPos=logoPos; p.logoSize=logoSizeFrac; p.logoScope=logoScopeProj;
+  const ix=+$('infoX').value||0, iy=+$('infoY').value||0;
+  if(k==='proj'){
+    p.pOpts=Object.assign({},projOpts);
+    const g=projGeom();                            // guarda em fração p/ acompanhar a resolução
+    p.infoFrac = (g.effW>0&&g.effH>0) ? {x:ix/g.effW, y:iy/g.effH} : p.infoFrac;
+  } else { p.infoX=ix; p.infoY=iy; }
 }
 function applyGenPrefs(k){                         // devolve o visual guardado (ou o padrão do contexto)
   const p=genPrefs[k]; if(!p) return;
@@ -2131,6 +2155,22 @@ function applyGenPrefs(k){                         // devolve o visual guardado 
   if(p.pOpts){
     Object.keys(p.pOpts).forEach(o=>{ projOpts[o]=p.pOpts[o]; });
     document.querySelectorAll('#projChips button').forEach(b=>b.classList.toggle('on',!!projOpts[b.dataset.p]));
+  }
+  // escala/posição da info e do logo
+  if(p.infoSize!=null){ infoSize=p.infoSize; $('infoScale').value=(infoSize*100).toFixed(1); $('infoScaleVal').textContent=$('infoScale').value+'%'; }
+  if(p.logoSize!=null){ logoSizeFrac=p.logoSize; $('logoScale').value=Math.round(logoSizeFrac*100); $('logoScaleVal').textContent=$('logoScale').value+'%'; }
+  if(p.logoScope){
+    logoScopeProj=p.logoScope;
+    $('segLogoScope').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.l===logoScopeProj));
+  }
+  if(p.logoPos){ logoPos=p.logoPos; $('logoPos').value=logoPos; $('logoXYWrap').style.display=logoPos==='custom'?'flex':'none'; }
+  if(p.infoPos){
+    $('infoPos').value=p.infoPos;
+    $('infoXYWrap').style.display=p.infoPos==='custom'?'flex':'none';
+    if(p.infoPos==='custom'){
+      if(k==='proj' && p.infoFrac){ const g=projGeom(); $('infoX').value=Math.round(p.infoFrac.x*g.effW); $('infoY').value=Math.round(p.infoFrac.y*g.effH); }
+      else if(p.infoX!=null){ $('infoX').value=p.infoX; $('infoY').value=p.infoY; }
+    }
   }
 }
 function mountGen(){
