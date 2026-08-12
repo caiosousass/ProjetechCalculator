@@ -1217,6 +1217,8 @@ function paintInfo(ctx,W,H,o){
   if(tit) lines.push({t:tit, s:fs*1.8});                          // título maior
   lines.push({t:`${W} × ${H} px`, s:fs*0.8});                     // resolução menor
   lines.push({t:`${fmt(o.mW||0,2)} × ${fmt(o.mH||0,2)} m`, s:fs*0.8});
+  if(o.cols>0 && o.rows>0) lines.push({t:`${o.cols} × ${o.rows} = ${fmt(o.cols*o.rows)} quadrados`, s:fs*0.8});
+  if(H>0) lines.push({t:`Proporção ${fmt(W/H,2)} : 1`, s:fs*0.8});
   const gap=fs*0.3;
   let bw=0, bh=0;
   lines.forEach((ln,i)=>{ ctx.font=`${infoWeight} ${ln.s.toFixed(0)}px ${font}`; bw=Math.max(bw,ctx.measureText(ln.t).width); bh+=ln.s*1.02+(i?gap:0); });
@@ -1302,7 +1304,7 @@ function drawTest(target, meta){
   if(isMain) infoRect=null;
   if(tiOpts.info && !M.noInfo){
     const wM=(M.mW!=null)?M.mW:cols*(+$('mw').value||0), hM=(M.mH!=null)?M.mH:rows*(+$('mh').value||0);
-    const r=paintInfo(ctx,W,H,{title:M.title,mW:wM,mH:hM,forceCenter:M.forceCenter});
+    const r=paintInfo(ctx,W,H,{title:M.title,mW:wM,mH:hM,forceCenter:M.forceCenter,cols,rows});
     if(isMain) infoRect=r; else if(M.__out) M.__out.info=r;
   }
   // logo
@@ -1454,8 +1456,12 @@ function drawTestProj(){
     }
   }
   drawProjOverlay(ctx,g,rects);
-  // info ÚNICA da tela toda (resolução e medida totais), por cima de tudo
-  if(tiOpts.info) infoRect=paintInfo(ctx,g.effW,g.effH,{mW:g.T,mH:g.Htot});
+  // info ÚNICA da tela toda (resolução, medida, nº de quadrados e proporção), por cima de tudo
+  if(tiOpts.info){
+    const base=g.pxW/12;
+    infoRect=paintInfo(ctx,g.effW,g.effH,{mW:g.T,mH:g.Htot,
+      cols:Math.max(1,Math.round(g.effW/base)), rows:Math.max(1,Math.round(g.effH/base))});
+  }
   outMeta={w:g.effW,h:g.effH,tag:`Multiprojecao ${g.N}x${g.M}`};
   $('tiInfo').textContent=`Multiprojeção ${g.N}×${g.M} · ${fmt(g.effW)} × ${fmt(g.effH)} px · blend ${fmt(g.bW)} px`;
   baseCv.width=g.effW; baseCv.height=g.effH; baseCtx.clearRect(0,0,g.effW,g.effH); baseCtx.drawImage(cv,0,0);
