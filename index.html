@@ -1206,6 +1206,13 @@ let snapG={v:null,h:null};          // linhas-guia do snap magnético (x/y em px
 let genTarget='led';                              // quem está usando o gerador: 'led' | 'proj' (multiprojeção)
 const projOpts={grid:true,cnum:true,blend:true,outline:true,pnum:true,footer:true};   // marcações específicas da multiprojeção
 let logoScopeProj='per';                          // logo na multiproj: 'per' (em cada projetor) | 'single' (um só, centralizado)
+/* cada contexto guarda seu próprio visual (o LED mantém o dele; a multiproj abre no padrão abaixo) */
+const genPrefs={
+  led:null,                                        // capturado do estado atual na 1ª troca
+  proj:{bg:'solid', c1:'#000000', c2:'#000000',
+        opts:{grid:true,numbers:true,circle:true,diag:false,info:true,logo:true,border:false},
+        pOpts:{grid:true,cnum:true,blend:true,outline:true,pnum:false,footer:false}}
+};
 let outMeta={w:0,h:0,tag:''};                     // tamanho/rótulo da última imagem gerada (nome de arquivo)
 /* bloco de info (título · resolução · medida em m) — usado pelo padrão e pela multiprojeção */
 function paintInfo(ctx,W,H,o){
@@ -1597,10 +1604,17 @@ let effect='none', effectSpeed='med', animId=null, glowT0=0;
 let glowScope='slice', sliceGeom=[];   // 'slice' = 1 explosão por tela (simultâneas) · 'canvas' = 1 só no conjunto
 const hexRgb=h=>{ h=(h||'#ffffff').replace('#',''); if(h.length===3)h=h.split('').map(x=>x+x).join(''); const n=parseInt(h,16); return `${(n>>16)&255},${(n>>8)&255},${n&255}`; };
 const glowPeriod=()=> effectSpeed==='slow'?2800 : effectSpeed==='fast'?1100 : 1900;
+/* cor do glow = cor do fundo, MAS em fundo escuro (ex.: preto) o modo "clarear" não mostraria nada,
+   então cai pra branco — é o que faz o efeito aparecer sobre preto */
+function glowColor(){
+  const rgb=hexRgb($('tiColor').value).split(',').map(Number);
+  const lum=(0.2126*rgb[0]+0.7152*rgb[1]+0.0722*rgb[2])/255;
+  return lum<0.18 ? '255,255,255' : rgb.join(',');
+}
 function drawGlow(ctx,W,H,t){
   const CX=W/2, CY=H/2, maxR=Math.hypot(W/2,H/2)+W*0.03;
   const p=(t%glowPeriod())/glowPeriod();
-  const R=Math.max(1,p*maxR), a=(1-p)*0.98, col=hexRgb($('tiColor').value);
+  const R=Math.max(1,p*maxR), a=(1-p)*0.98, col=glowColor();
   ctx.save(); ctx.globalCompositeOperation='screen';
   const g=ctx.createRadialGradient(CX,CY,0,CX,CY,R);
   g.addColorStop(0,`rgba(${col},${a*0.55})`);        // miolo mais forte
@@ -2097,6 +2111,28 @@ function applyModeUI(){
 function genHost(){
   return ($('scr-proj').classList.contains('active') && projMode==='multi') ? $('genHostProj') : $('genHostPix');
 }
+function snapGen(k){                               // fotografa o visual atual no perfil do contexto
+  const p=genPrefs[k]||(genPrefs[k]={});
+  p.bg=curBg; p.c1=$('tiColor').value; p.c2=$('tiColor2').value;
+  p.opts=Object.assign({},tiOpts);
+  if(k==='proj') p.pOpts=Object.assign({},projOpts);
+}
+function applyGenPrefs(k){                         // devolve o visual guardado (ou o padrão do contexto)
+  const p=genPrefs[k]; if(!p) return;
+  curBg=p.bg; $('tiColor').value=p.c1; $('tiColor2').value=p.c2;
+  $('segBg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.b===curBg));
+  $('f-color2').style.display = curBg==='checker' ? 'block':'none';
+  Object.keys(p.opts).forEach(o=>{ tiOpts[o]=p.opts[o]; });
+  document.querySelectorAll('#tiChips button').forEach(b=>b.classList.toggle('on',!!tiOpts[b.dataset.opt]));
+  $('tiInfoOpts').style.display   = tiOpts.info?'block':'none';
+  $('tiLogoOpts').style.display   = tiOpts.logo?'block':'none';
+  $('tiBorderOpts').style.display = tiOpts.border?'block':'none';
+  $('tiCanvas').style.touchAction = (tiOpts.logo||tiOpts.info)?'none':'';
+  if(p.pOpts){
+    Object.keys(p.pOpts).forEach(o=>{ projOpts[o]=p.pOpts[o]; });
+    document.querySelectorAll('#projChips button').forEach(b=>b.classList.toggle('on',!!projOpts[b.dataset.p]));
+  }
+}
 function mountGen(){
   const host=genHost(), blk=$('genBlock'), toProj=(host.id==='genHostProj');
   const moved=(blk.parentNode!==host), changed=(genTarget!==(toProj?'proj':'led'));
@@ -2104,7 +2140,12 @@ function mountGen(){
     if(dragEl){ dragEl=null; snapG={v:null,h:null}; }   // reparent no meio de um arrasto perderia o ponteiro
     host.appendChild(blk);
   }
-  if(changed){ stopAnim(); genTarget=toProj?'proj':'led'; }
+  if(changed){
+    stopAnim();
+    snapGen(genTarget);                            // guarda o visual do contexto que está saindo
+    genTarget=toProj?'proj':'led';
+    applyGenPrefs(genTarget);                      // e aplica o do contexto que está entrando
+  }
   applyGenUI();
   if(!moved && !changed) return;                        // nada mudou — não redesenhar canvas gigante à toa
   if(toProj || pixMode==='slices') drawTest();          // proj/slices desenham direto (restauram o próprio estado)
