@@ -500,6 +500,10 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
         <div class="field"><label>Limite por porta</label><div class="suffix"><input type="text" id="wirePx" value="650000" inputmode="numeric"><span>px</span></div></div>
         <div class="field"><label>Máx. gabinetes / porta <small style="color:var(--mut2)">(opc.)</small></label><div class="suffix"><input type="text" id="wireMax" value="" placeholder="—" inputmode="numeric"><span>un</span></div></div>
       </div>
+      <div class="field" style="flex:0 0 auto;margin-top:14px">
+        <label>Cor das setas</label>
+        <input type="color" id="wireColor" value="#ffffff">
+      </div>
       <div class="results" id="wireResults" style="margin-top:14px"></div>
       <div class="ti-preview" style="margin-top:12px"><canvas id="wireCv"></canvas></div>
       <div class="hint">Cada cor é uma porta da processadora; o número é a ordem de ligação dentro dela e a linha mostra o caminho do cabo. A porta fecha pelo limite de pixels ou de gabinetes — o que vier primeiro.</div>
@@ -1394,36 +1398,45 @@ function drawWireArrows(ctx,W,H,cols,rows,pxw,pxh){
   const s=Math.min(cw,ch);
   const X=c=>c*cw+cw/2, Y=r=>r*ch+ch/2;
   ctx.save();
-  ctx.lineCap='round'; ctx.lineJoin='round';
-  const lw=Math.max(2,s*0.035);
+  ctx.lineCap='butt'; ctx.lineJoin='miter';
+  const lw=Math.max(2,s*0.030);                 // traço fino e reto
+  const len=s*0.52, hd=s*0.19, hw=s*0.125;      // comprimento da seta · altura e meia-base da ponta
+  const cor=(($('wireColor')||{}).value)||'#ffffff';
+  const rgb=hexRgb(cor).split(',').map(Number);
+  const lum=(0.2126*rgb[0]+0.7152*rgb[1]+0.0722*rgb[2])/255;
+  const contraste=lum>0.55?'#000':'#fff';       // sombra e texto sempre no oposto da cor escolhida
+  ctx.shadowColor=lum>0.55?'rgba(0,0,0,.55)':'rgba(255,255,255,.85)';
+  ctx.shadowBlur=Math.max(2,lw*1.6);            // contorno suave, sem engrossar
+  ctx.fillStyle=cor; ctx.strokeStyle=cor; ctx.lineWidth=lw;
+  // uma seta por gabinete, centrada, apontando para o próximo da mesma porta
   for(let i=0;i<pl.ord.length-1;i++){
-    if(Math.floor(i/pl.porPorta)!==Math.floor((i+1)/pl.porPorta)) continue;   // não liga entre portas
+    if(Math.floor(i/pl.porPorta)!==Math.floor((i+1)/pl.porPorta)) continue;
     const a=pl.ord[i], b=pl.ord[i+1];
-    const x1=X(a.col), y1=Y(a.row), x2=X(b.col), y2=Y(b.row);
-    const ang=Math.atan2(y2-y1,x2-x1), rec=s*0.30, hd=s*0.16;                 // recua p/ a seta não colar no centro
-    const ax1=x1+Math.cos(ang)*rec, ay1=y1+Math.sin(ang)*rec;
-    const ax2=x2-Math.cos(ang)*rec, ay2=y2-Math.sin(ang)*rec;
-    [['rgba(255,255,255,.75)',lw*2.1],['#000',lw]].forEach(([cor,esp])=>{     // halo claro + traço preto
-      ctx.strokeStyle=cor; ctx.fillStyle=cor; ctx.lineWidth=esp;
-      ctx.beginPath(); ctx.moveTo(ax1,ay1); ctx.lineTo(ax2,ay2); ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(ax2,ay2);
-      ctx.lineTo(ax2-Math.cos(ang-0.45)*hd, ay2-Math.sin(ang-0.45)*hd);
-      ctx.lineTo(ax2-Math.cos(ang+0.45)*hd, ay2-Math.sin(ang+0.45)*hd);
-      ctx.closePath(); ctx.fill();
-    });
+    const ang=Math.atan2(Y(b.row)-Y(a.row), X(b.col)-X(a.col));
+    const cx=X(a.col), cy=Y(a.row);
+    const ux=Math.cos(ang), uy=Math.sin(ang);
+    const x1=cx-ux*len/2, y1=cy-uy*len/2;        // base
+    const x2=cx+ux*len/2, y2=cy+uy*len/2;        // ponta
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-ux*hd*0.85, y2-uy*hd*0.85); ctx.stroke();
+    ctx.beginPath();                              // ponta triangular
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-ux*hd+uy*hw, y2-uy*hd-ux*hw);
+    ctx.lineTo(x2-ux*hd-uy*hw, y2-uy*hd+ux*hw);
+    ctx.closePath(); ctx.fill();
   }
   // número do grupo no gabinete que inicia cada porta
-  const rad=s*0.19, fs=rad*1.15;
+  ctx.shadowBlur=Math.max(2,lw*2);
+  const rad=s*0.23, fs=rad*1.25;
   ctx.textAlign='center'; ctx.textBaseline='middle';
   pl.ord.forEach((p,i)=>{
     if(i%pl.porPorta!==0) return;
     const cx=X(p.col), cy=Y(p.row);
     ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2);
-    ctx.fillStyle='#fff'; ctx.fill();
-    ctx.lineWidth=Math.max(1.5,rad*0.10); ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.stroke();
-    ctx.fillStyle='#000'; ctx.font=`700 ${fs.toFixed(0)}px Montserrat,Arial`;
+    ctx.fillStyle=cor; ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle=contraste; ctx.font=`700 ${fs.toFixed(0)}px Montserrat,Arial`;
     ctx.fillText(String(Math.floor(i/pl.porPorta)+1), cx, cy);
+    ctx.shadowBlur=Math.max(2,lw*2);
   });
   ctx.restore();
 }
@@ -1490,6 +1503,7 @@ $('segWireSerp').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   b.classList.add('on'); wireSerp=b.dataset.p==='1'; wireChanged();
 });
 ['wirePx','wireMax'].forEach(id=>$(id).addEventListener('input',wireChanged));
+$('wireColor').addEventListener('input',()=>{ if(tiOpts.wire) requestDraw(); });
 $('wireCard').addEventListener('toggle',()=>{ if($('wireCard').open) calcWire(); });
 
 // pessoa de referência: mostrar/ocultar + altura editável
