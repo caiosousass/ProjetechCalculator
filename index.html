@@ -623,6 +623,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
             <button class="chip" data-opt="info">Info</button>
             <button class="chip on" data-opt="logo">Logo</button>
             <button class="chip" data-opt="border">Borda</button>
+            <button class="chip" data-opt="wire">Cabeamento</button>
           </div>
         </div>
       </div>
@@ -1271,7 +1272,7 @@ let pixMode='single';                 // 'single' (canvas único) ou 'slices' �
 let pmeta={};
 let curBg='grad';
 let infoSize=0.03, infoAlign='center', infoWeight='400';
-const tiOpts={grid:true,numbers:true,circle:true,diag:true,info:false,logo:true,border:false};
+const tiOpts={grid:true,numbers:true,circle:true,diag:true,info:false,logo:true,border:false,wire:false};
 let borderPx=15;
 // logo na imagem de teste
 let logoSource='1', logoPos='center', logoSizeFrac=0.50;
@@ -1375,19 +1376,64 @@ function wireOrder(cols,rows){
   }
   return ord;
 }
+// plano de cabeamento: ordem dos gabinetes + quantos cabem por porta
+function wirePlan(cols,rows,pxw,pxh){
+  const pxGab=(pxw||0)*(pxh||0);
+  const limPx=parseInt(($('wirePx')||{}).value)||0;
+  const limGab=parseInt(($('wireMax')||{}).value)||0;
+  let porPorta = pxGab>0 && limPx>0 ? Math.floor(limPx/pxGab) : (limGab||cols*rows);
+  if(limGab>0) porPorta=Math.min(porPorta||limGab, limGab);
+  porPorta=Math.max(1, porPorta||1);
+  const total=cols*rows;
+  return {ord:wireOrder(cols,rows), porPorta, portas:Math.ceil(total/porPorta), total, pxGab};
+}
+/* setas de cabeamento POR CIMA do padrão (o mesmo caminho do card Cabeamento) */
+function drawWireArrows(ctx,W,H,cols,rows,pxw,pxh){
+  if(!(cols>0)||!(rows>0)) return;
+  const pl=wirePlan(cols,rows,pxw,pxh), cw=W/cols, ch=H/rows;
+  const s=Math.min(cw,ch);
+  const X=c=>c*cw+cw/2, Y=r=>r*ch+ch/2;
+  ctx.save();
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  const lw=Math.max(2,s*0.035);
+  for(let i=0;i<pl.ord.length-1;i++){
+    if(Math.floor(i/pl.porPorta)!==Math.floor((i+1)/pl.porPorta)) continue;   // não liga entre portas
+    const a=pl.ord[i], b=pl.ord[i+1];
+    const x1=X(a.col), y1=Y(a.row), x2=X(b.col), y2=Y(b.row);
+    const ang=Math.atan2(y2-y1,x2-x1), rec=s*0.30, hd=s*0.16;                 // recua p/ a seta não colar no centro
+    const ax1=x1+Math.cos(ang)*rec, ay1=y1+Math.sin(ang)*rec;
+    const ax2=x2-Math.cos(ang)*rec, ay2=y2-Math.sin(ang)*rec;
+    [['rgba(255,255,255,.75)',lw*2.1],['#000',lw]].forEach(([cor,esp])=>{     // halo claro + traço preto
+      ctx.strokeStyle=cor; ctx.fillStyle=cor; ctx.lineWidth=esp;
+      ctx.beginPath(); ctx.moveTo(ax1,ay1); ctx.lineTo(ax2,ay2); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ax2,ay2);
+      ctx.lineTo(ax2-Math.cos(ang-0.45)*hd, ay2-Math.sin(ang-0.45)*hd);
+      ctx.lineTo(ax2-Math.cos(ang+0.45)*hd, ay2-Math.sin(ang+0.45)*hd);
+      ctx.closePath(); ctx.fill();
+    });
+  }
+  // número do grupo no gabinete que inicia cada porta
+  const rad=s*0.19, fs=rad*1.15;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  pl.ord.forEach((p,i)=>{
+    if(i%pl.porPorta!==0) return;
+    const cx=X(p.col), cy=Y(p.row);
+    ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2);
+    ctx.fillStyle='#fff'; ctx.fill();
+    ctx.lineWidth=Math.max(1.5,rad*0.10); ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.stroke();
+    ctx.fillStyle='#000'; ctx.font=`700 ${fs.toFixed(0)}px Montserrat,Arial`;
+    ctx.fillText(String(Math.floor(i/pl.porPorta)+1), cx, cy);
+  });
+  ctx.restore();
+}
 function calcWire(){
   const card=$('wireCard'), cv=$('wireCv');
   if(!card||!cv) return;
   const {cols,rows,pxw,pxh}=pmeta;
   if(!(cols>0)||!(rows>0)||pixMode!=='single'){ $('wireResults').innerHTML=''; cv.width=0; return; }
-  const pxGab=(pxw||0)*(pxh||0);
-  const limPx=parseInt($('wirePx').value)||0;
-  const limGab=parseInt($('wireMax').value)||0;
-  let porPorta = pxGab>0 && limPx>0 ? Math.floor(limPx/pxGab) : (limGab||cols*rows);
-  if(limGab>0) porPorta=Math.min(porPorta||limGab, limGab);
-  porPorta=Math.max(1, porPorta||1);
-  const total=cols*rows, portas=Math.ceil(total/porPorta);
-  const ord=wireOrder(cols,rows);
+  const _pl=wirePlan(cols,rows,pxw,pxh);
+  const pxGab=_pl.pxGab, porPorta=_pl.porPorta, total=_pl.total, portas=_pl.portas, ord=_pl.ord;
   // resultado
   const S=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
   const dist=[]; for(let p=0;p<portas;p++) dist.push(Math.min(porPorta,total-p*porPorta));
@@ -1429,19 +1475,21 @@ function calcWire(){
     ctx.fillText(ini?('P'+(Math.floor(i/porPorta)+1)):String((i%porPorta)+1), cx, cy);
   });
 }
+// qualquer mudança no cabeamento atualiza o mapa E as setas da imagem de teste
+function wireChanged(){ calcWire(); if(tiOpts.wire) requestDraw(); }
 $('segWireStart').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segWireStart').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); wireStart=b.dataset.s; calcWire();
+  b.classList.add('on'); wireStart=b.dataset.s; wireChanged();
 });
 $('segWireDir').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segWireDir').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); wireDir=b.dataset.d; calcWire();
+  b.classList.add('on'); wireDir=b.dataset.d; wireChanged();
 });
 $('segWireSerp').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   $('segWireSerp').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); wireSerp=b.dataset.p==='1'; calcWire();
+  b.classList.add('on'); wireSerp=b.dataset.p==='1'; wireChanged();
 });
-['wirePx','wireMax'].forEach(id=>$(id).addEventListener('input',calcWire));
+['wirePx','wireMax'].forEach(id=>$(id).addEventListener('input',wireChanged));
 $('wireCard').addEventListener('toggle',()=>{ if($('wireCard').open) calcWire(); });
 
 // pessoa de referência: mostrar/ocultar + altura editável
@@ -1565,6 +1613,8 @@ function drawTest(target, meta){
       ctx.fillStyle='#000'; ctx.fillText(String(c+1),x,y);
     }
   }
+  // cabeamento: setas do caminho por cima do padrão (mesma config do card Cabeamento)
+  if(tiOpts.wire && typeof drawWireArrows==='function') drawWireArrows(ctx,W,H,cols,rows,pxw,pxh);
   // info: bloco centralizado multilinha (título maior · resolução · medida em m)
   if(isMain) infoRect=null;
   if(tiOpts.info && !M.noInfo){
@@ -2017,6 +2067,7 @@ $('tiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
   if(k==='info') $('tiInfoOpts').style.display=tiOpts.info?'block':'none';
   if(k==='logo') $('tiLogoOpts').style.display=tiOpts.logo?'block':'none';
   if(k==='border') $('tiBorderOpts').style.display=tiOpts.border?'block':'none';
+  if(k==='wire' && tiOpts.wire && $('wireCard')){ $('wireCard').open=true; calcWire(); }  // abre a config junto
   $('tiCanvas').style.touchAction=(tiOpts.logo||tiOpts.info)?'none':'';   // arrastar sem rolar a página
   drawTest();
 });
