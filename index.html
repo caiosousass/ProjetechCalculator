@@ -1207,6 +1207,35 @@ let genTarget='led';                              // quem está usando o gerador
 const projOpts={grid:true,cnum:true,blend:true,outline:true,pnum:true,footer:true};   // marcações específicas da multiprojeção
 let logoScopeProj='per';                          // logo na multiproj: 'per' (em cada projetor) | 'single' (um só, centralizado)
 let outMeta={w:0,h:0,tag:''};                     // tamanho/rótulo da última imagem gerada (nome de arquivo)
+/* bloco de info (título · resolução · medida em m) — usado pelo padrão e pela multiprojeção */
+function paintInfo(ctx,W,H,o){
+  o=o||{};
+  const fs=Math.max(6,Math.min(W,H)*infoSize);
+  const font=$('tiInfoFont').value;
+  const tit=(o.title!=null) ? o.title : $('tiTitle').value.trim();
+  const lines=[];
+  if(tit) lines.push({t:tit, s:fs*1.8});                          // título maior
+  lines.push({t:`${W} × ${H} px`, s:fs*0.8});                     // resolução menor
+  lines.push({t:`${fmt(o.mW||0,2)} × ${fmt(o.mH||0,2)} m`, s:fs*0.8});
+  const gap=fs*0.3;
+  let bw=0, bh=0;
+  lines.forEach((ln,i)=>{ ctx.font=`${infoWeight} ${ln.s.toFixed(0)}px ${font}`; bw=Math.max(bw,ctx.measureText(ln.t).width); bh+=ln.s*1.02+(i?gap:0); });
+  const m=Math.max(10,W*0.02), pos=o.forceCenter?'center':$('infoPos').value;
+  let x,y;
+  if(pos==='custom'){ x=+$('infoX').value||0; y=+$('infoY').value||0; }
+  else if(pos==='center'){ x=(W-bw)/2; y=(H-bh)/2; }
+  else{ x=(pos==='tc'||pos==='bc')?(W-bw)/2:(pos.endsWith('l')?m:W-bw-m); y=pos.startsWith('t')?m:H-bh-m; }
+  const al=infoAlign;                                    // esquerda · centro · direita (dentro do bloco)
+  const ax = al==='left'?x : al==='right'?x+bw : x+bw/2;
+  ctx.save();
+  ctx.textAlign=al; ctx.textBaseline='top';
+  ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=Math.max(1.5,fs*0.12); ctx.shadowOffsetY=Math.max(1,fs*0.04);
+  ctx.fillStyle=$('tiInfoColor').value;
+  let cy=y;
+  lines.forEach(ln=>{ ctx.font=`${infoWeight} ${ln.s.toFixed(0)}px ${font}`; ctx.fillText(ln.t, ax, cy); cy+=ln.s*1.02+gap; });
+  ctx.restore();
+  return {x,y,w:bw,h:bh};
+}
 function drawTest(target, meta){
   if(!target && genTarget==='proj') return drawTestProj();        // gerador emprestado à Projeção
   if(!target && pixMode==='slices') return drawTestSlices();      // modo Slices: composição do canvas
@@ -1271,33 +1300,10 @@ function drawTest(target, meta){
   }
   // info: bloco centralizado multilinha (título maior · resolução · medida em m)
   if(isMain) infoRect=null;
-  if(tiOpts.info){
-    const fs=Math.max(6,Math.min(W,H)*infoSize);
-    const font=$('tiInfoFont').value;
-    const tit=(M.title!=null) ? M.title : $('tiTitle').value.trim();     // no slice, o nome do slice
+  if(tiOpts.info && !M.noInfo){
     const wM=(M.mW!=null)?M.mW:cols*(+$('mw').value||0), hM=(M.mH!=null)?M.mH:rows*(+$('mh').value||0);
-    const lines=[];
-    if(tit) lines.push({t:tit, s:fs*1.8});                          // título maior
-    lines.push({t:`${W} × ${H} px`, s:fs*0.8});                     // resolução menor
-    lines.push({t:`${fmt(wM,2)} × ${fmt(hM,2)} m`, s:fs*0.8});      // medida em m
-    const gap=fs*0.3;
-    let bw=0, bh=0;
-    lines.forEach((ln,i)=>{ ctx.font=`${infoWeight} ${ln.s.toFixed(0)}px ${font}`; bw=Math.max(bw,ctx.measureText(ln.t).width); bh+=ln.s*1.02+(i?gap:0); });
-    const m=Math.max(10,W*0.02), pos=M.forceCenter?'center':$('infoPos').value;
-    let x,y;
-    if(pos==='custom'){ x=+$('infoX').value||0; y=+$('infoY').value||0; }
-    else if(pos==='center'){ x=(W-bw)/2; y=(H-bh)/2; }
-    else{ x=(pos==='tc'||pos==='bc')?(W-bw)/2:(pos.endsWith('l')?m:W-bw-m); y=pos.startsWith('t')?m:H-bh-m; }
-    const al=infoAlign;                                    // esquerda · centro · direita (dentro do bloco)
-    const ax = al==='left'?x : al==='right'?x+bw : x+bw/2;
-    ctx.save();
-    ctx.textAlign=al; ctx.textBaseline='top';
-    ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=Math.max(1.5,fs*0.12); ctx.shadowOffsetY=Math.max(1,fs*0.04);
-    ctx.fillStyle=$('tiInfoColor').value;
-    let cy=y;
-    lines.forEach(ln=>{ ctx.font=`${infoWeight} ${ln.s.toFixed(0)}px ${font}`; ctx.fillText(ln.t, ax, cy); cy+=ln.s*1.02+gap; });
-    ctx.restore();
-    if(isMain) infoRect={x,y,w:bw,h:bh}; else if(M.__out) M.__out.info={x,y,w:bw,h:bh};
+    const r=paintInfo(ctx,W,H,{title:M.title,mW:wM,mH:hM,forceCenter:M.forceCenter});
+    if(isMain) infoRect=r; else if(M.__out) M.__out.info=r;
   }
   // logo
   if(isMain) logoRect=null;
@@ -1406,7 +1412,7 @@ function drawTestProj(){
   // pra as linhas se encontrarem e a numeração ser 1..N sem reiniciar por projetor)
   const _grid=tiOpts.grid, _numbers=tiOpts.numbers;
   tiOpts.grid=false; tiOpts.numbers=false;
-  drawTest(off,{totPxW:g.pxW,totPxH:g.pxH,cols:gc,rows,pxw:g.pxW/gc,pxh:g.pxH/rows,mW:g.Wp,mH:g.Hp,noLogo:soloLogo,__out:o});
+  drawTest(off,{totPxW:g.pxW,totPxH:g.pxH,cols:gc,rows,pxw:g.pxW/gc,pxh:g.pxH/rows,mW:g.Wp,mH:g.Hp,noLogo:soloLogo,noInfo:true,__out:o});
   tiOpts.grid=_grid; tiOpts.numbers=_numbers;
   sliceRef={x:rects[0].x,y:rects[0].y,w:rects[0].w,h:rects[0].h};  // projetor 1 = referência do arrasto
   if(o.logo) logoRect={x:o.logo.x,y:o.logo.y,w:o.logo.w,h:o.logo.h};
@@ -1448,6 +1454,8 @@ function drawTestProj(){
     }
   }
   drawProjOverlay(ctx,g,rects);
+  // info ÚNICA da tela toda (resolução e medida totais), por cima de tudo
+  if(tiOpts.info) infoRect=paintInfo(ctx,g.effW,g.effH,{mW:g.T,mH:g.Htot});
   outMeta={w:g.effW,h:g.effH,tag:`Multiprojecao ${g.N}x${g.M}`};
   $('tiInfo').textContent=`Multiprojeção ${g.N}×${g.M} · ${fmt(g.effW)} × ${fmt(g.effH)} px · blend ${fmt(g.bW)} px`;
   baseCv.width=g.effW; baseCv.height=g.effH; baseCtx.clearRect(0,0,g.effW,g.effH); baseCtx.drawImage(cv,0,0);
@@ -1467,13 +1475,17 @@ function drawTestProj(){
 function drawProjOverlay(ctx,g,rects){
   const W=g.effW, H=g.effH, S=Math.max(1,Math.round(Math.min(g.pxW,g.pxH)/900));
   const cols=['#3d7bff','#22d3ee','#22c55e','#f59e0b','#a855f7','#ef4444'];
-  const cell=g.pxW/12;                    // mesma célula do padrão, agora CONTÍNUA no canvas todo
+  // célula AUTOAJUSTADA: parte de pxW/12 e arredonda p/ caber um nº inteiro de colunas/linhas,
+  // assim a grade fecha exatamente nas bordas (nenhuma coluna partida cortando a numeração)
+  const base=g.pxW/12;
+  const nCols=Math.max(1,Math.round(W/base)), cellW=W/nCols;
+  const nRows=Math.max(1,Math.round(H/base)), cellH=H/nRows;
   const footH=projOpts.footer?Math.max(30,g.pxH*0.06):0;
-  // grade quadrada contínua — verticais e horizontais se encontram em todo o canvas
+  // grade contínua — verticais e horizontais se encontram em todo o canvas
   if(projOpts.grid){
     ctx.save(); ctx.strokeStyle='rgba(255,255,255,.16)'; ctx.lineWidth=S; ctx.beginPath();
-    for(let x=0;x<=W+0.5;x+=cell){ const xr=Math.min(W,Math.round(x)); ctx.moveTo(xr,0); ctx.lineTo(xr,H); }
-    for(let y=0;y<=H+0.5;y+=cell){ const yr=Math.min(H,Math.round(y)); ctx.moveTo(0,yr); ctx.lineTo(W,yr); }
+    for(let c=0;c<=nCols;c++){ const xr=Math.min(W,Math.round(c*cellW)); ctx.moveTo(xr,0); ctx.lineTo(xr,H); }
+    for(let r=0;r<=nRows;r++){ const yr=Math.min(H,Math.round(r*cellH)); ctx.moveTo(0,yr); ctx.lineTo(W,yr); }
     ctx.stroke(); ctx.restore();
   }
   if(projOpts.blend){
@@ -1530,10 +1542,9 @@ function drawProjOverlay(ctx,g,rects){
   }
   // numeração CONTÍNUA das colunas (1..N) em cima e embaixo — círculos brancos
   if(projOpts.cnum){
-    const nCols=Math.max(1,Math.round(W/cell));
-    const rad=Math.max(11,cell*0.20), fs=rad*1.05, yTop=rad+S*3, yBot=H-footH-rad-S*3;
+    const rad=Math.max(11,cellW*0.20), fs=rad*1.05, yTop=rad+S*3, yBot=H-footH-rad-S*3;
     ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`700 ${fs.toFixed(0)}px Montserrat,Arial`;
-    for(let c=1;c<=nCols;c++){ const cx=(c-0.5)*cell; if(cx>W-1) break;
+    for(let c=1;c<=nCols;c++){ const cx=(c-0.5)*cellW;      // sempre no meio da coluna (nenhuma fica cortada)
       [yTop,yBot].forEach(cy=>{
         ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2);
         ctx.fillStyle='rgba(255,255,255,.92)'; ctx.fill();
@@ -1757,7 +1768,7 @@ $('segLogoScope').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   const full=()=>({x:0,y:0,w:cv.width,h:cv.height});
   const TARGETS=[
     {rect:()=>infoRect, on:()=>tiOpts.info, sel:'infoPos', wrap:'infoXYWrap', xf:'infoX', yf:'infoY',
-     ref:()=>sliceRef||full()},
+     ref:()=>(genTarget==='proj')?full():(sliceRef||full())},   // na multiproj a info é única (imagem toda)
     {rect:()=>logoRect, on:()=>tiOpts.logo, sel:'logoPos', wrap:'logoXYWrap', xf:'logoX', yf:'logoY',
      ref:()=>soloLogoProj()?full():(sliceRef||full())},   // logo único = coordenadas da imagem inteira
   ];
