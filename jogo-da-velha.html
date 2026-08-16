@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<title>Jogo da Velha — Projetech</title>
+<style>
+:root{
+  --bg:#0b1020; --card:#161f38; --card2:#1c2745;
+  --line:#26325a; --txt:#eef2ff; --mut:#93a0c7;
+  --acc:#3d7bff; --acc2:#22d3ee; --ok:#22c55e; --danger:#ef4444;
+  --r:16px; --shadow:0 8px 30px rgba(0,0,0,.35);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:radial-gradient(1200px 600px at 50% -10%, #1a2542 0%, var(--bg) 55%) fixed;
+  color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  min-height:100dvh;display:flex;align-items:center;justify-content:center;
+  padding:20px 16px calc(var(--safe-bot) + 20px);
+}
+.wrap{width:100%;max-width:420px}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:.3px}
+.sub{color:var(--mut);font-size:13px;margin:0 0 18px}
+
+.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+
+/* Seletor de modo */
+.modes{display:flex;gap:8px;margin-bottom:14px}
+.modes button{flex:1;padding:10px 6px;border-radius:12px;border:1px solid var(--line);
+  background:#131c33;color:var(--mut);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.modes button:hover{border-color:#33427a;color:var(--txt)}
+.modes button.on{background:linear-gradient(180deg,var(--acc),#2f66e0);border-color:var(--acc);color:#fff}
+
+/* Placar */
+.score{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.score div{background:#131c33;border:1px solid var(--line);border-radius:12px;padding:8px 4px;text-align:center}
+.score b{display:block;font-size:20px;line-height:1.2}
+.score span{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+.score .x b{color:var(--acc2)} .score .o b{color:var(--danger)}
+
+/* Tabuleiro */
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;aspect-ratio:1}
+.cell{
+  background:#131c33;border:1px solid var(--line);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(34px,12vw,52px);font-weight:700;line-height:1;
+  cursor:pointer;user-select:none;transition:transform .12s,background .15s,border-color .15s;
+}
+.cell:not(.taken):hover{background:#18233f;border-color:#33427a}
+.cell:active{transform:scale(.96)}
+.cell.x{color:var(--acc2)} .cell.o{color:var(--danger)}
+.cell.taken{cursor:default}
+.cell.win{background:rgba(34,197,94,.14);border-color:var(--ok);animation:pop .3s ease}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.07)}100%{transform:scale(1)}}
+.board.locked .cell:not(.taken){cursor:default}
+
+.status{margin:14px 0 12px;text-align:center;font-size:15px;font-weight:600;min-height:22px}
+.status .muted{color:var(--mut);font-weight:400}
+
+.actions{display:flex;gap:8px}
+.actions button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);
+  background:#131c33;color:var(--txt);font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+.actions button:hover{border-color:#33427a;background:#18233f}
+.actions button.primary{background:linear-gradient(180deg,var(--acc),#2f66e0);border-color:var(--acc);color:#fff}
+.hint{margin-top:14px;text-align:center;font-size:12px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Jogo da Velha</h1>
+  <p class="sub">Escolha o modo e comece a jogar. X sempre começa.</p>
+
+  <div class="card">
+    <div class="modes" id="modes">
+      <button data-mode="2p">2 jogadores</button>
+      <button data-mode="easy">CPU fácil</button>
+      <button data-mode="hard" class="on">CPU difícil</button>
+    </div>
+
+    <div class="score">
+      <div class="x"><b id="sx">0</b><span>X</span></div>
+      <div><b id="sd">0</b><span>Empates</span></div>
+      <div class="o"><b id="so">0</b><span>O</span></div>
+    </div>
+
+    <div class="board" id="board"></div>
+
+    <div class="status" id="status"></div>
+
+    <div class="actions">
+      <button class="primary" id="new">Nova partida</button>
+      <button id="reset">Zerar placar</button>
+    </div>
+  </div>
+
+  <p class="hint">CPU difícil usa minimax — o melhor que dá é empatar. 🙂</p>
+</div>
+
+<script>
+(function(){
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const boardEl  = document.getElementById('board');
+  const statusEl = document.getElementById('status');
+  const modesEl  = document.getElementById('modes');
+
+  let cells = Array(9).fill('');
+  let turn = 'X';
+  let over = false;
+  let mode = 'hard';               // '2p' | 'easy' | 'hard'
+  const score = {X:0, O:0, D:0};
+
+  // Monta as 9 casas uma única vez
+  const cellEls = Array.from({length:9}, (_,i) => {
+    const d = document.createElement('div');
+    d.className = 'cell';
+    d.addEventListener('click', () => play(i));
+    boardEl.appendChild(d);
+    return d;
+  });
+
+  function winner(b){
+    for (const [a,c,d] of LINES)
+      if (b[a] && b[a] === b[c] && b[a] === b[d]) return {player:b[a], line:[a,c,d]};
+    return b.every(Boolean) ? {player:'D', line:[]} : null;
+  }
+
+  function render(win){
+    cells.forEach((v,i) => {
+      const el = cellEls[i];
+      el.textContent = v;
+      el.className = 'cell' + (v ? ' taken ' + v.toLowerCase() : '');
+    });
+    if (win && win.line.length) win.line.forEach(i => cellEls[i].classList.add('win'));
+    boardEl.classList.toggle('locked', over);
+  }
+
+  function setStatus(win){
+    if (!win) {
+      const quem = mode === '2p' || turn === 'X' ? 'Vez do <b>' + turn + '</b>' : 'CPU pensando…';
+      statusEl.innerHTML = quem;
+    } else if (win.player === 'D') {
+      statusEl.innerHTML = '<span class="muted">Deu velha! Ninguém levou.</span>';
+    } else {
+      const nome = mode !== '2p' && win.player === 'O' ? 'A CPU' : 'Jogador ' + win.player;
+      statusEl.innerHTML = nome + ' venceu! 🎉';
+    }
+  }
+
+  function finish(win){
+    over = true;
+    score[win.player === 'D' ? 'D' : win.player]++;
+    document.getElementById('sx').textContent = score.X;
+    document.getElementById('so').textContent = score.O;
+    document.getElementById('sd').textContent = score.D;
+  }
+
+  function play(i){
+    if (over || cells[i]) return;
+    if (mode !== '2p' && turn === 'O') return;   // vez da CPU, humano não mexe
+    move(i);
+  }
+
+  function move(i){
+    cells[i] = turn;
+    const win = winner(cells);
+    if (win) finish(win); else turn = turn === 'X' ? 'O' : 'X';
+    render(win);
+    setStatus(win);
+    if (!over && mode !== '2p' && turn === 'O') setTimeout(cpuMove, 380);
+  }
+
+  function cpuMove(){
+    const livres = cells.map((v,i) => v ? null : i).filter(i => i !== null);
+    if (!livres.length) return;
+    // Fácil: 65% aleatório, senão joga certo — dá pro amigo ganhar de vez em quando.
+    const i = (mode === 'easy' && Math.random() < 0.65)
+      ? livres[Math.floor(Math.random() * livres.length)]
+      : best(cells, 'O').idx;
+    move(i);
+  }
+
+  // Minimax com profundidade: prefere vencer rápido e perder devagar.
+  function best(b, jogador){
+    const win = winner(b);
+    if (win) return {score: win.player === 'O' ? 10 : win.player === 'X' ? -10 : 0, idx:-1};
+
+    let melhor = {score: jogador === 'O' ? -Infinity : Infinity, idx:-1};
+    for (let i = 0; i < 9; i++){
+      if (b[i]) continue;
+      b[i] = jogador;
+      const s = best(b, jogador === 'O' ? 'X' : 'O').score;
+      b[i] = '';
+      const pontos = s > 0 ? s - 1 : s < 0 ? s + 1 : 0;   // desconta profundidade
+      if (jogador === 'O' ? pontos > melhor.score : pontos < melhor.score)
+        melhor = {score: pontos, idx: i};
+    }
+    return melhor;
+  }
+
+  function newGame(){
+    cells = Array(9).fill('');
+    turn = 'X'; over = false;
+    render(null); setStatus(null);
+  }
+
+  modesEl.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    mode = btn.dataset.mode;
+    [...modesEl.children].forEach(b => b.classList.toggle('on', b === btn));
+    newGame();
+  });
+
+  document.getElementById('new').addEventListener('click', newGame);
+  document.getElementById('reset').addEventListener('click', () => {
+    score.X = score.O = score.D = 0;
+    document.getElementById('sx').textContent = '0';
+    document.getElementById('so').textContent = '0';
+    document.getElementById('sd').textContent = '0';
+    newGame();
+  });
+
+  newGame();
+})();
+</script>
+</body>
+</html>
