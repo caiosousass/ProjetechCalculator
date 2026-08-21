@@ -1312,13 +1312,21 @@ function calcPixel(){
 }
 let lastWM=0, lastHM=0;
 // Miniatura da imagem de teste (a partir do baseCv) p/ preencher o painel no preview.
-function panelThumb(){
+// baseCvVer sobe a cada redesenho do baseCv e invalida o cache — assim a miniatura
+// é gerada UMA vez por imagem (não a cada quadro ao arrastar). Duas resoluções:
+// alta (nítida, para os previews parados) e leve (só durante o arraste, p/ não travar).
+let baseCvVer=0, _thumbHi={v:-1,u:null}, _thumbLo={v:-1,u:null};
+function panelThumb(low){
   if(!baseCv || !baseCv.width || !baseCv.height) return null;
-  const maxW=380, sc=Math.min(1, maxW/baseCv.width);
+  const cache = low ? _thumbLo : _thumbHi;
+  if(cache.v===baseCvVer && cache.u) return cache.u;      // reaproveita enquanto a imagem não muda
+  const cap = low ? 460 : 1600;                            // limita o lado maior (nítido sem exagerar no peso)
+  const long = Math.max(baseCv.width, baseCv.height), sc = Math.min(1, cap/long);
   const w=Math.max(1,Math.round(baseCv.width*sc)), h=Math.max(1,Math.round(baseCv.height*sc));
   const c=document.createElement('canvas'); c.width=w; c.height=h;
-  const x=c.getContext('2d'); x.drawImage(baseCv,0,0,w,h);
-  try{ return c.toDataURL('image/jpeg',0.85); }catch(e){ return null; }
+  const x=c.getContext('2d'); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high'; x.drawImage(baseCv,0,0,w,h);
+  let u=null; try{ u=c.toDataURL('image/jpeg', low?0.85:0.94); }catch(e){ u=null; }
+  cache.v=baseCvVer; cache.u=u; return u;
 }
 let showPerson=true, personHeight=1.7;
 let pixMode='single';                 // 'single' (canvas único) ou 'slices' — usado já no drawTest
@@ -1606,7 +1614,7 @@ function drawTest(target, meta){
   $('tiInfo').textContent=`Imagem: ${fmt(W)} × ${fmt(H)} px`;
   outMeta={w:W,h:H,tag:''};
   // guarda o padrão base (sem efeito) num canvas offscreen p/ a animação reaproveitar
-  baseCv.width=W; baseCv.height=H; baseCtx.clearRect(0,0,W,H); baseCtx.drawImage(cv,0,0);
+  baseCv.width=W; baseCv.height=H; baseCtx.clearRect(0,0,W,H); baseCtx.drawImage(cv,0,0); baseCvVer++;
   if(pixMode==='single') drawScene(lastWM,lastHM);   // preview acompana cor/fundo/logo em tempo real
   scheduleVideoHint();
 }
@@ -1644,7 +1652,7 @@ function drawTestSlices(){
   pmeta={totPxW:cw,totPxH:ch,cols:0,rows:0,pxw:0,pxh:0,pitch:0};
   outMeta={w:cw,h:ch,tag:''};
   $('tiInfo').textContent=`Canvas total: ${fmt(cw)} × ${fmt(ch)} px · ${list.length} canvas`;
-  baseCv.width=cw; baseCv.height=ch; baseCtx.clearRect(0,0,cw,ch); baseCtx.drawImage(cv,0,0);
+  baseCv.width=cw; baseCv.height=ch; baseCtx.clearRect(0,0,cw,ch); baseCtx.drawImage(cv,0,0); baseCvVer++;
   // linhas-guia do snap só na tela (depois do baseCv, p/ nunca entrarem no PNG/vídeo)
   if(dragEl && (snapG.v!=null || snapG.h!=null)){
     ctx.save();
@@ -1738,7 +1746,7 @@ function drawTestProj(){
   if(tiOpts.info) infoRect=paintInfo(ctx,g.effW,g.effH,{meters:false,ratio:true});
   outMeta={w:g.effW,h:g.effH,tag:`Multiprojecao ${g.N}x${g.M}`};
   $('tiInfo').textContent=`Multiprojeção ${g.N}×${g.M} · ${fmt(g.effW)} × ${fmt(g.effH)} px · blend ${fmt(g.bW)} px`;
-  baseCv.width=g.effW; baseCv.height=g.effH; baseCtx.clearRect(0,0,g.effW,g.effH); baseCtx.drawImage(cv,0,0);
+  baseCv.width=g.effW; baseCv.height=g.effH; baseCtx.clearRect(0,0,g.effW,g.effH); baseCtx.drawImage(cv,0,0); baseCvVer++;
   // guias de snap só na tela (depois do baseCv — nunca vão pro PNG/vídeo)
   if(dragEl && (snapG.v!=null || snapG.h!=null)){
     ctx.save();
@@ -2346,7 +2354,7 @@ function cmapFit(){
 function cmapBody(k,o){
   o=o||{};
   const cw=cmap.cw, ch=cmap.ch, u=n=>n/k, fx=n=>(+n).toFixed(1);
-  const thumb=panelThumb();   // imagem de teste composta (o pixel map de verdade)
+  const thumb=panelThumb(cmap.drag||cmap.pan||cmap.pinch);   // leve durante o arraste/pan/pinça, nítida parado
   let s=`<rect x="0" y="0" width="${cw}" height="${ch}" rx="${u(4)}" fill="#05101c" stroke="#26325a" stroke-width="${u(1)}"/>`;
   if(thumb) s+=`<image x="0" y="0" width="${cw}" height="${ch}" preserveAspectRatio="none" href="${thumb}"/>`;
   const halo=`stroke="#05101c" stroke-width="${u(2.5)}" paint-order="stroke"`;
