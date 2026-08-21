@@ -248,6 +248,7 @@ details.sector-res[open] summary::before{transform:rotate(90deg)}
 .home-links svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 /* Pixel Map · Slices */
 .slice{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--bg2)}
+.comp-side .slice.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
 .slice-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .slice-head .sl-name{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:8px;font-weight:700;font-size:15px;color:var(--txt);padding:4px 6px}
 .slice-head .sl-name:focus{border-color:var(--line);background:var(--card)}
@@ -280,7 +281,9 @@ details.sector-res[open] summary::before{transform:rotate(90deg)}
 .comp-wrap{flex:1;min-height:0;display:flex}
 .comp-fs-host{flex:1;min-width:0;padding:10px}
 .comp-fs-host .comp-stage{height:100%}
-.comp-side{width:238px;flex:0 0 auto;border-left:1px solid var(--line);background:var(--card);overflow:auto;padding:10px}
+.comp-side{width:288px;flex:0 0 auto;border-left:1px solid var(--line);background:var(--card);overflow:auto;padding:10px}
+.comp-side .card{padding:12px;margin-bottom:10px;box-shadow:none}
+.comp-side #sliceCtrl > .card:last-child{margin-bottom:0}
 .cs-it{border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px;background:var(--bg2);cursor:pointer}
 .cs-it.on{border-color:var(--acc2)}
 .cs-h{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;margin-bottom:6px}
@@ -293,7 +296,7 @@ details.sector-res[open] summary::before{transform:rotate(90deg)}
 .comp-help b{color:var(--mut)}
 @media(max-width:760px){
   .comp-wrap{flex-direction:column}
-  .comp-side{width:auto;border-left:0;border-top:1px solid var(--line);max-height:32vh}
+  .comp-side{width:auto;border-left:0;border-top:1px solid var(--line);max-height:52vh}
   .comp-stage{height:230px}
 }
 body.comp-open{overflow:hidden}
@@ -546,6 +549,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     </div>
 
     <div id="pxSlices" style="display:none">
+    <div id="sliceCtrlHome"><div id="sliceCtrl">
     <div class="card">
       <h3>Canvas total</h3>
       <div class="row">
@@ -560,6 +564,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div id="sliceList"></div>
       <button class="btn btn-ghost btn-sm" id="addSlice" style="width:100%">+ Adicionar canvas</button>
     </div>
+    </div></div>
 
     <div class="card">
       <h3>Composição</h3>
@@ -1204,7 +1209,7 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     <div class="comp-fs-host" id="compHostFs"></div>
     <aside class="comp-side" id="compSide"></aside>
   </div>
-  <div class="comp-help">Arraste os canvas · <b>Espaço + arrastar</b> (ou arrastar o fundo) move a tela · scroll / pinça dá zoom</div>
+  <div class="comp-help">Arraste os canvas · <b>Espaço + arrastar</b> move a tela · scroll / pinça dá zoom · <b>crie, edite e mude o canvas total no painel</b></div>
 </div>
 
 <!-- Pré-visualização (painel + pessoa de referência) em tela cheia -->
@@ -2450,34 +2455,23 @@ function cmapZoomAt(f,sx,sy){
 function cmapZoomC(f){ const b=cmapBox(); cmapZoomAt(f, b.left+b.w/2, b.top+b.h/2); }
 /* ── painel lateral (tela cheia) ──────────────────────────────────── */
 function cmapSide(force){
-  const box=$('compSide'); if(!box||$('compFs').hidden) return;
-  const items=cmap.list, inSide=box.contains(document.activeElement);
-  if((force&&!inSide) || box.dataset.n!==String(items.length)){
-    box.dataset.n=String(items.length);
-    box.innerHTML = items.length ? items.map((s,i)=>`
-      <div class="cs-it${cmap.sel===i?' on':''}" data-i="${i}">
-        <div class="cs-h"><span class="cs-dot" style="background:${CMAPC[i%6]}"></span><span class="cs-n">${sesc(s.name)}</span></div>
-        <div class="cs-r">
-          <label>X<input class="cs-x" type="text" inputmode="numeric" value="${s.x}"></label>
-          <label>Y<input class="cs-y" type="text" inputmode="numeric" value="${s.y}"></label>
-        </div>
-      </div>`).join('') : '<div class="hint">Nenhum canvas criado ainda.</div>';
-    return;
+  // Em tela cheia o painel lateral usa os controles REAIS (movidos para o aside).
+  // Aqui só destacamos — e, ao selecionar pelo mapa, rolamos/expandimos — o canvas escolhido.
+  if($('compFs').hidden) return;
+  const items=[...document.querySelectorAll('#sliceList .slice')];
+  items.forEach((el,i)=>el.classList.toggle('sel', i===cmap.sel));
+  if(force && cmap.sel>=0 && items[cmap.sel]){
+    items[cmap.sel].classList.remove('collapsed');
+    try{ items[cmap.sel].scrollIntoView({block:'nearest'}); }catch(_){}
   }
-  [...box.querySelectorAll('.cs-it')].forEach((el,i)=>{
-    const s=items[i]; if(!s) return;
-    const n=el.querySelector('.cs-n'); if(n&&n.textContent!==s.name) n.textContent=s.name;
-    const xi=el.querySelector('.cs-x'), yi=el.querySelector('.cs-y');
-    if(xi&&document.activeElement!==xi) xi.value=s.x;
-    if(yi&&document.activeElement!==yi) yi.value=s.y;
-    el.classList.toggle('on', cmap.sel===i);
-  });
 }
 function cmapFs(on){
   const fs=$('compFs'), st=$('compStage'); if(!fs||!st) return;
   fs.hidden=!on;
   lockBody();
   (on?$('compHostFs'):$('compHost')).appendChild(st);
+  // move os controles reais (Canvas total + Múltiplos canvas) pro painel lateral e devolve ao fechar
+  const ctrl=$('sliceCtrl'); if(ctrl) (on?$('compSide'):$('sliceCtrlHome')).appendChild(ctrl);
   if(!on){ cmap.space=false; st.classList.remove('grab','grabbing','moving'); }
   // aplica na hora e reforça depois: rAF não dispara com a aba em segundo plano
   const aplica=()=>{ if(cmap.view){ cmapFit(); cmapRender(); } cmapSide(true); };
