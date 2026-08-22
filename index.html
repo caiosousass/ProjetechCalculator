@@ -249,6 +249,12 @@ details.sector-res[open] summary::before{transform:rotate(90deg)}
 /* Pixel Map · Slices */
 .slice{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--bg2)}
 .comp-side .slice.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+/* liga/desliga a screen (igual ao Advanced Output): desativada não entra no pixel map nem nos totais */
+.sl-on{width:26px;height:26px;flex:0 0 auto;padding:0;border-radius:7px;border:1px solid var(--acc);background:var(--acc);color:#fff;font-size:13px;line-height:1;display:grid;place-items:center;cursor:pointer}
+.slice.off .sl-on{background:none;border-color:var(--line);color:transparent}
+.slice.off .slice-nome{color:var(--mut2);text-decoration:line-through}
+.slice.off .sl-res{color:var(--mut2)}
+.slice.off .slice-body{opacity:.45}
 .slice-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .slice-head .sl-name{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:8px;font-weight:700;font-size:15px;color:var(--txt);padding:4px 6px}
 .slice-head .sl-name:focus{border-color:var(--line);background:var(--card)}
@@ -279,19 +285,20 @@ details.sector-res[open] summary::before{transform:rotate(90deg)}
 .comp-bar{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--card);flex:0 0 auto}
 .comp-bar b{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .comp-wrap{flex:1;min-height:0;display:flex}
-.comp-fs-host{flex:1;min-width:0;padding:10px}
+/* min-height:0 é essencial: sem ele o mapa se recusa a encolher e empurra o
+   painel (e o botão de adicionar) para fora da tela no celular */
+.comp-fs-host{flex:1;min-width:0;min-height:0;padding:10px}
 .comp-fs-host .comp-stage{height:100%}
-.comp-side{width:288px;flex:0 0 auto;border-left:1px solid var(--line);background:var(--card);overflow:auto;padding:10px}
-.comp-side .card{padding:12px;margin-bottom:10px;box-shadow:none}
-.comp-side #sliceCtrl > .card:last-child{margin-bottom:0}
-.cs-it{border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px;background:var(--bg2);cursor:pointer}
-.cs-it.on{border-color:var(--acc2)}
-.cs-h{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;margin-bottom:6px}
-.cs-dot{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
-.cs-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cs-r{display:flex;gap:6px}
-.cs-r label{flex:1;min-width:0;font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:.4px}
-.cs-r input{width:100%;padding:7px;font-size:13px;margin-top:2px}
+.comp-side{width:288px;flex:0 0 auto;border-left:1px solid var(--line);background:var(--card);overflow:hidden;padding:10px;display:flex;flex-direction:column;min-height:0}
+/* na tela cheia cada grupo vira uma aba: o card perde a moldura e o título (a aba já diz) */
+.comp-side .card{background:none;border:0;box-shadow:none;padding:0;margin:0}
+.comp-side .card h3{display:none}
+.ctabs{display:flex;gap:4px;padding:4px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;flex:0 0 auto}
+.ctabs button{flex:1;min-width:0;appearance:none;border:0;border-radius:9px;background:none;color:var(--mut);font:inherit;font-size:12.5px;font-weight:700;padding:9px 4px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+.ctabs button[aria-selected="true"]{background:var(--acc);color:#fff}
+.ctabs button:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+.ctab{flex:1;min-height:0;overflow:auto}
+.ctab[hidden]{display:none}
 .comp-help{padding:7px 12px calc(7px + var(--safe-bot));font-size:11px;color:var(--mut2);border-top:1px solid var(--line);background:var(--card);text-align:center;flex:0 0 auto}
 .comp-help b{color:var(--mut)}
 @media(max-width:760px){
@@ -549,21 +556,19 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
     </div>
 
     <div id="pxSlices" style="display:none">
-    <div id="sliceCtrlHome"><div id="sliceCtrl">
-    <div class="card">
+    <div id="homeTotal"><div class="card" id="grpTotal">
       <h3>Canvas total</h3>
       <div class="row">
         <div class="field"><label>Largura</label><div class="suffix"><input type="text" id="cvW" value="1920" inputmode="numeric"><span>px</span></div></div>
         <div class="field"><label>Altura</label><div class="suffix"><input type="text" id="cvH" value="1080" inputmode="numeric"><span>px</span></div></div>
       </div>
       <button class="btn btn-ghost btn-sm" id="cvAuto" style="width:100%;margin-top:10px">Auto (ajustar às screens)</button>
-    </div>
+    </div></div>
 
-    <div class="card">
+    <div id="homeScreens"><div class="card" id="grpScreens">
       <h3>Múltiplas screens</h3>
       <div id="sliceList"></div>
       <button class="btn btn-ghost btn-sm" id="addSlice" style="width:100%">+ Adicionar screen</button>
-    </div>
     </div></div>
 
     <div class="card">
@@ -582,10 +587,10 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
       <div class="hint" id="sliceHint"></div>
     </div>
 
-    <div class="card">
+    <div id="homeRes"><div class="card" id="grpRes">
       <h3>Resultado geral</h3>
       <div class="results" id="sliceTotal"></div>
-    </div>
+    </div></div>
     </div>
 
     <div class="card">
@@ -1207,9 +1212,18 @@ input[type=range]{accent-color:var(--acc);height:28px;cursor:pointer}
   </div>
   <div class="comp-wrap">
     <div class="comp-fs-host" id="compHostFs"></div>
-    <aside class="comp-side" id="compSide"></aside>
+    <aside class="comp-side" id="compSide">
+      <div class="ctabs" role="tablist" aria-label="Seções do painel">
+        <button role="tab" id="ctbScreens" aria-controls="ctScreens" aria-selected="true"  data-t="screens">Screens</button>
+        <button role="tab" id="ctbTotal"   aria-controls="ctTotal"   aria-selected="false" data-t="total">Canvas total</button>
+        <button role="tab" id="ctbRes"     aria-controls="ctRes"     aria-selected="false" data-t="res">Resultado</button>
+      </div>
+      <div class="ctab" id="ctScreens" role="tabpanel" aria-labelledby="ctbScreens"></div>
+      <div class="ctab" id="ctTotal"   role="tabpanel" aria-labelledby="ctbTotal" hidden></div>
+      <div class="ctab" id="ctRes"     role="tabpanel" aria-labelledby="ctbRes" hidden></div>
+    </aside>
   </div>
-  <div class="comp-help">Arraste as screens · <b>Espaço + arrastar</b> move a tela · scroll / pinça dá zoom · <b>crie, edite e mude o canvas total no painel</b></div>
+  <div class="comp-help">Arraste as screens · <b>Espaço + arrastar</b> move a tela · pinça dá zoom · use as abas do painel para <b>criar, ligar/desligar e editar</b></div>
 </div>
 
 <!-- Pré-visualização (painel + pessoa de referência) em tela cheia -->
@@ -1636,8 +1650,8 @@ function requestDraw(){
 function drawTestSlices(){
   const cv=$('tiCanvas'); if(!cv) return;
   const cw=parseInt($('cvW').value)||0, ch=parseInt($('cvH').value)||0;
-  const list=[...document.querySelectorAll('#sliceList .slice')].map(sliceData).filter(s=>s.gab>0);
-  if(!(cw>0)||!(ch>0)||!list.length){ $('tiInfo').textContent='Defina o canvas total e ao menos uma screen.'; return; }
+  const list=[...document.querySelectorAll('#sliceList .slice')].map(sliceData).filter(s=>s.gab>0&&s.on);
+  if(!(cw>0)||!(ch>0)||!list.length){ $('tiInfo').textContent='Defina o canvas total e ao menos uma screen ativa.'; return; }
   cv.width=cw; cv.height=ch;
   const ctx=cv.getContext('2d');
   ctx.fillStyle='#000'; ctx.fillRect(0,0,cw,ch);                  // fora dos slices = preto
@@ -2241,6 +2255,7 @@ function sliceItem(){
   const div=document.createElement('div'); div.className='slice';
   div.innerHTML=`<div class="slice-head">
       <button class="slice-collapse" title="Recolher/expandir">▾</button>
+      <button class="sl-on" title="Ativar ou desativar esta screen" aria-pressed="true">✓</button>
       <input class="sl-name" value="Screen ${++sliceSeq}">
       <span class="sl-res"></span>
       <button class="sl-del" title="Remover">×</button>
@@ -2276,6 +2291,11 @@ function sliceItem(){
   const syncCustom=()=>{ div.querySelector('.sl-custom').style.display = mSel.value==='custom' ? '' : 'none'; };
   syncCustom();
   div.querySelector('.slice-collapse').onclick=()=>div.classList.toggle('collapsed');
+  div.querySelector('.sl-on').onclick=function(){
+    const off=div.classList.toggle('off');
+    this.setAttribute('aria-pressed', off?'false':'true');
+    calcSlices();
+  };
   div.querySelector('.sl-del').onclick=()=>{ div.remove(); calcSlices(); };
   div.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',calcSlices));
   mSel.addEventListener('change',()=>{ syncCustom(); calcSlices(); });
@@ -2294,6 +2314,7 @@ function sliceData(el){
   const wM=parseFloat(el.querySelector('.sl-w').value)||0, hM=parseFloat(el.querySelector('.sl-h').value)||0;
   const cols=p.w>0?Math.round(wM/p.w):0, rows=p.h>0?Math.round(hM/p.h):0;
   return { el, p, name:el.querySelector('.sl-name').value.trim()||'Screen',
+    on:!el.classList.contains('off'),            // screen desativada some do pixel map e dos totais
     cols, rows, gab:cols*rows,
     pxW:cols*p.rw, pxH:rows*p.rh, mW:cols*p.w, mH:rows*p.h,
     x:parseInt(el.querySelector('.sl-x').value)||0, y:parseInt(el.querySelector('.sl-y').value)||0 };
@@ -2303,12 +2324,14 @@ function calcSlices(){
   const S=(k,v,cls='')=>`<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
   const list=[...document.querySelectorAll('#sliceList .slice')].map(sliceData);
   let tGab=0,tPx=0,tKg=0,tAvg=0,tMax=0,tCase=0;
+  let nOff=0;
   list.forEach(s=>{
-    s.el.querySelector('.sl-res').textContent = s.gab? `${fmt(s.pxW)}×${fmt(s.pxH)} px` : '—';
+    s.el.querySelector('.sl-res').textContent = !s.on ? 'desativada' : (s.gab? `${fmt(s.pxW)}×${fmt(s.pxH)} px` : '—');
     s.el.querySelector('.sl-out').innerHTML =
       S('Resolução', `${fmt(s.pxW)}×${fmt(s.pxH)}<small> px</small>`,'hi full')+
       S('Dimensão real', `${fmt(s.mW,2)} × ${fmt(s.mH,2)}<small> m</small>`)+
       S('Gabinetes', `${fmt(s.gab)}<small> un</small> <small style="color:var(--mut2)">(${s.cols}×${s.rows})</small>`);
+    if(!s.on){ nOff++; return; }                 // desativada não soma nos totais
     tGab+=s.gab; tPx+=s.pxW*s.pxH;
     if(s.p.kg!=null) tKg+=s.gab*s.p.kg;
     if(s.p.avg!=null) tAvg+=s.gab*s.p.avg;
@@ -2317,7 +2340,7 @@ function calcSlices(){
   });
   const cw=parseInt($('cvW').value)||0, ch=parseInt($('cvH').value)||0;
   let html=S('Canvas total', `${fmt(cw)}×${fmt(ch)}<small> px</small>`,'hi full')
-    + S('Screens', `${fmt(list.length)}<small> un</small>`)
+    + S('Screens', `${fmt(list.length-nOff)}<small> un</small>${nOff?` <small style="color:var(--mut2)">+${nOff} desativada${nOff>1?'s':''}</small>`:''}`)
     + S('Gabinetes', `${fmt(tGab)}<small> un</small>`);
   if(tCase) html+=S('Cases', `${fmt(tCase)}<small> un</small>`);
   html+=S('Pixels das screens', `${fmt(tPx)}<small> px</small>`);
@@ -2365,12 +2388,14 @@ function cmapBody(k,o){
   const halo=`stroke="#05101c" stroke-width="${u(2.5)}" paint-order="stroke"`;
   cmap.list.forEach((sl,i)=>{
     if(!sl.gab) return;
-    const c=CMAPC[i%6], on=(o.sel===i), wS=sl.pxW*k, hS=sl.pxH*k;
+    const off=!sl.on;                                  // desativada: contorno tracejado e apagado
+    const c=off?'#6b78a3':CMAPC[i%6], on=(o.sel===i), wS=sl.pxW*k, hS=sl.pxH*k;
+    const dash=off?` stroke-dasharray="${u(7)},${u(5)}"`:'';
     // com o conteúdo de fundo, o retângulo vira só contorno; sem imagem, mantém o preenchimento
-    s+=`<rect x="${fx(sl.x)}" y="${fx(sl.y)}" width="${fx(sl.pxW)}" height="${fx(sl.pxH)}" rx="${u(2)}" fill="${c}" fill-opacity="${thumb?(on?.12:0):.18}" stroke="${c}" stroke-width="${u(on?2.6:1.5)}"/>`;
+    s+=`<rect x="${fx(sl.x)}" y="${fx(sl.y)}" width="${fx(sl.pxW)}" height="${fx(sl.pxH)}" rx="${u(2)}" fill="${c}" fill-opacity="${off?.07:(thumb?(on?.12:0):.18)}" stroke="${c}" stroke-width="${u(on?2.6:1.5)}"${dash}/>`;
     if(wS>52&&hS>26)
-      s+=`<text x="${fx(sl.x+sl.pxW/2)}" y="${fx(sl.y+u(13))}" fill="#fff" font-size="${u(10)}" font-weight="700" text-anchor="middle" ${halo}>${sesc(sl.name)}</text>`
-       + `<text x="${fx(sl.x+sl.pxW/2)}" y="${fx(sl.y+u(23))}" fill="#cdd6ef" font-size="${u(8.5)}" text-anchor="middle" ${halo}>${fmt(sl.pxW)}×${fmt(sl.pxH)} · X${fmt(sl.x)} Y${fmt(sl.y)}</text>`;
+      s+=`<text x="${fx(sl.x+sl.pxW/2)}" y="${fx(sl.y+u(13))}" fill="${off?'#93a0c7':'#fff'}" font-size="${u(10)}" font-weight="700" text-anchor="middle" ${halo}>${sesc(sl.name)}</text>`
+       + `<text x="${fx(sl.x+sl.pxW/2)}" y="${fx(sl.y+u(23))}" fill="${off?'#6b78a3':'#cdd6ef'}" font-size="${u(8.5)}" text-anchor="middle" ${halo}>${off?'desativada':`${fmt(sl.pxW)}×${fmt(sl.pxH)} · X${fmt(sl.x)} Y${fmt(sl.y)}`}</text>`;
   });
   if(o.guides && cmap.view){
     const g=cmap.guide, v=cmap.view, d=`${u(6)},${u(4)}`;
@@ -2394,7 +2419,7 @@ function cmapRender(){
 }
 function cmapHint(){
   const h=$('sliceHint'); if(!h) return;
-  const fora=cmap.list.filter(s=>s.gab&&(s.x<0||s.y<0||s.x+s.pxW>cmap.cw||s.y+s.pxH>cmap.ch)).length;
+  const fora=cmap.list.filter(s=>s.gab&&s.on&&(s.x<0||s.y<0||s.x+s.pxW>cmap.cw||s.y+s.pxH>cmap.ch)).length;
   h.innerHTML = fora
     ? `⚠️ ${fora} screen${fora===1?'':'s'} fora do canvas total — ajuste a posição ou o tamanho do canvas total.`
     : `Arraste as screens no mapa ou use o X/Y — é o mesmo patch que você usa na processadora. Toque em <b>⛶</b> para editar em tela cheia.`;
@@ -2454,6 +2479,15 @@ function cmapZoomAt(f,sx,sy){
 }
 function cmapZoomC(f){ const b=cmapBox(); cmapZoomAt(f, b.left+b.w/2, b.top+b.h/2); }
 /* ── painel lateral (tela cheia) ──────────────────────────────────── */
+/* abas do painel: Screens · Canvas total · Resultado */
+function compTab(nome){
+  const bar=$('compSide'); if(!bar) return;
+  bar.querySelectorAll('.ctabs [role="tab"]').forEach(b=>{
+    const sel=(b.dataset.t===nome);
+    b.setAttribute('aria-selected', sel?'true':'false');
+    const p=$(b.getAttribute('aria-controls')); if(p) p.hidden=!sel;
+  });
+}
 function cmapSide(force){
   // Em tela cheia o painel lateral usa os controles REAIS (movidos para o aside).
   // Aqui só destacamos — e, ao selecionar pelo mapa, rolamos/expandimos — o canvas escolhido.
@@ -2461,6 +2495,7 @@ function cmapSide(force){
   const items=[...document.querySelectorAll('#sliceList .slice')];
   items.forEach((el,i)=>el.classList.toggle('sel', i===cmap.sel));
   if(force && cmap.sel>=0 && items[cmap.sel]){
+    compTab('screens');                       // selecionou no mapa: mostra a aba da lista
     items[cmap.sel].classList.remove('collapsed');
     try{ items[cmap.sel].scrollIntoView({block:'nearest'}); }catch(_){}
   }
@@ -2470,8 +2505,24 @@ function cmapFs(on){
   fs.hidden=!on;
   lockBody();
   (on?$('compHostFs'):$('compHost')).appendChild(st);
-  // move os controles reais (Canvas total + Múltiplos canvas) pro painel lateral e devolve ao fechar
-  const ctrl=$('sliceCtrl'); if(ctrl) (on?$('compSide'):$('sliceCtrlHome')).appendChild(ctrl);
+  // move os controles REAIS pras abas do painel (e devolve ao fechar) — nada é duplicado
+  [['grpScreens','ctScreens','homeScreens'],
+   ['grpTotal','ctTotal','homeTotal'],
+   ['grpRes','ctRes','homeRes']].forEach(g=>{
+    const el=$(g[0]); if(el) (on?$(g[1]):$(g[2])).appendChild(el);
+  });
+  /* no painel a lista fica compacta (estilo Resolume): recolhe os cartões e abre
+     só o selecionado; ao fechar, cada um volta como estava na coluna normal */
+  document.querySelectorAll('#sliceList .slice').forEach((el,i)=>{
+    if(on){
+      el.dataset.era = el.classList.contains('collapsed') ? 'c' : 'a';
+      el.classList.toggle('collapsed', i!==cmap.sel);
+    }else if(el.dataset.era){
+      el.classList.toggle('collapsed', el.dataset.era==='c');
+      delete el.dataset.era;
+    }
+  });
+  if(on) compTab('screens');
   if(!on){ cmap.space=false; st.classList.remove('grab','grabbing','moving'); }
   // aplica na hora e reforça depois: rAF não dispara com a aba em segundo plano
   const aplica=()=>{ if(cmap.view){ cmapFit(); cmapRender(); } cmapSide(true); };
@@ -2577,16 +2628,21 @@ function cmapFs(on){
 
   const side=$('compSide');
   if(side){
-    side.addEventListener('pointerdown',e=>{
-      const it=e.target.closest('.cs-it'); if(!it) return;
-      cmap.sel=+it.dataset.i; cmapRender(); cmapSide(false);
+    side.addEventListener('click',e=>{
+      const t=e.target.closest('.ctabs [role="tab"]');
+      if(t){ compTab(t.dataset.t); return; }
+      // tocar num cartão da lista seleciona a screen no mapa
+      const sl=e.target.closest('.slice'); if(!sl) return;
+      const i=[...document.querySelectorAll('#sliceList .slice')].indexOf(sl);
+      if(i>=0 && i!==cmap.sel){ cmap.sel=i; cmapRender(); cmapSide(false); }
     });
-    side.addEventListener('input',e=>{
-      const it=e.target.closest('.cs-it'); if(!it) return;
-      const s=cmap.list[+it.dataset.i]; if(!s) return;
-      if(e.target.classList.contains('cs-x')) s.el.querySelector('.sl-x').value=parseInt(e.target.value)||0;
-      if(e.target.classList.contains('cs-y')) s.el.querySelector('.sl-y').value=parseInt(e.target.value)||0;
-      calcSlices();
+    side.addEventListener('keydown',e=>{
+      const t=e.target.closest('.ctabs [role="tab"]'); if(!t) return;
+      if(e.key!=='ArrowRight' && e.key!=='ArrowLeft') return;
+      e.preventDefault();
+      const abas=[...side.querySelectorAll('.ctabs [role="tab"]')], i=abas.indexOf(t);
+      const n=abas[(i+(e.key==='ArrowRight'?1:abas.length-1))%abas.length];
+      n.focus(); compTab(n.dataset.t);
     });
   }
   // a área muda de tamanho ao abrir a aba, girar o celular ou entrar em tela cheia
@@ -2599,7 +2655,7 @@ function cmapFs(on){
 $('addSlice').onclick=()=>{ $('sliceList').appendChild(sliceItem()); calcSlices(); };
 ['cvW','cvH'].forEach(id=>$(id).addEventListener('input',calcSlices));
 $('cvAuto').onclick=()=>{
-  const list=[...document.querySelectorAll('#sliceList .slice')].map(sliceData).filter(s=>s.gab);
+  const list=[...document.querySelectorAll('#sliceList .slice')].map(sliceData).filter(s=>s.gab&&s.on);
   if(!list.length) return;
   $('cvW').value=Math.max(...list.map(s=>s.x+s.pxW));
   $('cvH').value=Math.max(...list.map(s=>s.y+s.pxH));
@@ -3569,7 +3625,7 @@ if('serviceWorker' in navigator){
 
     var cw,ch,canvases,mPerPx,modelName='';
     if(slices){
-      var list=[].slice.call(document.querySelectorAll('#sliceList .slice')).map(sliceData).filter(function(s){return s.gab>0;});
+      var list=[].slice.call(document.querySelectorAll('#sliceList .slice')).map(sliceData).filter(function(s){return s.gab>0&&s.on;});
       cw=parseInt($('cvW').value)||0; ch=parseInt($('cvH').value)||0;
       canvases=list.map(function(s){return {x:s.x,y:s.y,pxW:s.pxW,pxH:s.pxH,mW:s.mW,mH:s.mH,name:s.name};});
       mPerPx=(canvases[0]&&canvases[0].pxW)? canvases[0].mW/canvases[0].pxW : 0;
@@ -3689,7 +3745,7 @@ if('serviceWorker' in navigator){
       if(slices){
         cfg.push(['Modo','Múltiplas screens']);
         cfg.push(['Canvas total', $('cvW').value+' × '+$('cvH').value+' px']);
-        cfg.push(['Qtd. de screens', String(document.querySelectorAll('#sliceList .slice').length)]);
+        cfg.push(['Qtd. de screens', String(document.querySelectorAll('#sliceList .slice:not(.off)').length)]);
       }else{
         var sel=$('preset'), modelo=(sel && sel.options[sel.selectedIndex])?sel.options[sel.selectedIndex].text:'—';
         cfg.push(['Modelo', modelo]);
